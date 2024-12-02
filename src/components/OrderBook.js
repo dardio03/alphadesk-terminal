@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import OrderBookSettings from './OrderBookSettings';
 import './OrderBook.css';
 
 export const EXCHANGES = {
@@ -7,14 +8,20 @@ export const EXCHANGES = {
   COINBASE: 'coinbase'
 };
 
-const OrderBook = ({ symbol = 'BTCUSDT', exchange = EXCHANGES.BINANCE }) => {
+const OrderBook = ({ symbol = 'BTCUSDT' }) => {
+  const [enabledExchanges, setEnabledExchanges] = useState([EXCHANGES.BINANCE]);
+  const [exchangeData, setExchangeData] = useState({
+    [EXCHANGES.BINANCE]: { bids: [], asks: [] },
+    [EXCHANGES.BYBIT]: { bids: [], asks: [] },
+    [EXCHANGES.COINBASE]: { bids: [], asks: [] }
+  });
   const [bids, setBids] = useState([]);
   const [asks, setAsks] = useState([]);
   const [lastUpdateId, setLastUpdateId] = useState(0);
   const [error, setError] = useState(null);
 
   // Convert symbol format based on exchange
-  const getExchangeSymbol = () => {
+  const getExchangeSymbol = (exchange) => {
     switch (exchange) {
       case EXCHANGES.BINANCE:
         return symbol;
@@ -27,9 +34,77 @@ const OrderBook = ({ symbol = 'BTCUSDT', exchange = EXCHANGES.BINANCE }) => {
     }
   };
 
+  const handleToggleExchange = (exchange) => {
+    setEnabledExchanges(prev => {
+      if (prev.includes(exchange)) {
+        return prev.filter(e => e !== exchange);
+      } else {
+        return [...prev, exchange];
+      }
+    });
+  };
+
+  const aggregateOrderBook = useCallback(() => {
+    // Combine all enabled exchanges' order books
+    const allBids = [];
+    const allAsks = [];
+
+    enabledExchanges.forEach(exchange => {
+      const { bids, asks } = exchangeData[exchange];
+      allBids.push(...bids.map(bid => ({ ...bid, exchange })));
+      allAsks.push(...asks.map(ask => ({ ...ask, exchange })));
+    });
+
+    // Sort and aggregate orders at the same price level
+    const aggregatedBids = allBids
+      .reduce((acc, bid) => {
+        const existingBid = acc.find(b => b.price === bid.price);
+        if (existingBid) {
+          existingBid.quantity += bid.quantity;
+          existingBid.exchanges = [...existingBid.exchanges, bid.exchange];
+        } else {
+          acc.push({ ...bid, exchanges: [bid.exchange] });
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => b.price - a.price)
+      .slice(0, 20);
+
+    const aggregatedAsks = allAsks
+      .reduce((acc, ask) => {
+        const existingAsk = acc.find(a => a.price === ask.price);
+        if (existingAsk) {
+          existingAsk.quantity += ask.quantity;
+          existingAsk.exchanges = [...existingAsk.exchanges, ask.exchange];
+        } else {
+          acc.push({ ...ask, exchanges: [ask.exchange] });
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => a.price - b.price)
+      .slice(0, 20);
+
+    setBids(aggregatedBids);
+    setAsks(aggregatedAsks);
+  }, [enabledExchanges, exchangeData]);
+
   useEffect(() => {
-    let ws;
+    aggregateOrderBook();
+  }, [enabledExchanges, exchangeData, aggregateOrderBook]);
+
+  useEffect(() => {
+    const connections = {};
     
+    const updateExchangeData = (exchange, bids, asks) => {
+      setExchangeData(prev => ({
+        ...prev,
+        [exchange]: {
+          bids: bids || prev[exchange].bids,
+          asks: asks || prev[exchange].asks
+        }
+      }));
+    };
+
     const fetchBinanceOrderBook = async () => {
       try {
         const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=20`);
