@@ -1,9 +1,9 @@
 import React from 'react';
 import { Rnd } from 'react-rnd';
 import TradingViewWidget from './components/TradingViewWidget';
-import OrderBook from './components/OrderBook';
+import OrderBook, { EXCHANGES } from './components/OrderBook';
 import LivePrice from './components/LivePrice';
-import './components/OrderBook.css';
+import './App.css';
 
 
 const App = () => {
@@ -21,7 +21,7 @@ const App = () => {
         minHeight={300}
         bounds="window"
       >
-        <div style={{ border: '1px solid #ccc', padding: '10px', backgroundColor: '#fff' }}>
+        <div className="widget-container">
           <TradingViewWidget />
         </div>
       </Rnd>
@@ -36,7 +36,7 @@ const App = () => {
         minHeight={200}
         bounds="window"
       >
-        <div style={{ border: '1px solid #ccc', padding: '10px', backgroundColor: '#fff' }}>
+        <div className="widget-container">
           <LivePrice />
         </div>
       </Rnd>
@@ -51,8 +51,8 @@ const App = () => {
         minHeight={200}
         bounds="window"
       >
-        <div style={{ border: '1px solid #ccc', padding: '10px', backgroundColor: '#fff' }}>
-          <OrderBook />
+        <div className="widget-container dark">
+          <OrderBook symbol="BTCUSDT" exchange={EXCHANGES.BINANCE} />
         </div>
       </Rnd>
     </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './OrderBook.css';
 
-const EXCHANGES = {
+export const EXCHANGES = {
   BINANCE: 'binance',
   BYBIT: 'bybit',
   COINBASE: 'coinbase'
