@@ -1,70 +1,135 @@
-// LivePrice Component
 import React, { useEffect, useState } from 'react';
 import './OrderBook.css';
 
-const LivePrice = () => {
-  const [binancePrice, setBinancePrice] = useState(null);
-  const [bybitPrice, setBybitPrice] = useState(null);
+const OrderBook = ({ symbol = 'BTCUSDT' }) => {
+  const [bids, setBids] = useState([]);
+  const [asks, setAsks] = useState([]);
+  const [lastUpdateId, setLastUpdateId] = useState(0);
 
   useEffect(() => {
-    const fetchInitialData = async () => {
+    // Initiales Laden des Order Books
+    const fetchOrderBook = async () => {
       try {
-        // Initiales Abrufen des Binance Preises
-        const binanceResponse = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
-        const binanceData = await binanceResponse.json();
-        setBinancePrice(binanceData.price);
-
-        // Initiales Abrufen des Bybit Preises
-        const bybitResponse = await fetch('https://api.bybit.com/v2/public/tickers?symbol=BTCUSDT');
-        const bybitData = await bybitResponse.json();
-        if (bybitData.result && bybitData.result.length > 0) {
-          setBybitPrice(bybitData.result[0].last_price);
-        }
+        const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=20`);
+        const data = await response.json();
+        
+        setBids(data.bids.map(([price, quantity]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity)
+        })));
+        
+        setAsks(data.asks.map(([price, quantity]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity)
+        })));
+        
+        setLastUpdateId(data.lastUpdateId);
       } catch (error) {
-        console.error('Fehler beim Abrufen der initialen Daten:', error);
+        console.error('Fehler beim Laden des Order Books:', error);
       }
     };
 
-    fetchInitialData();
+    fetchOrderBook();
 
-    // Set up WebSocket connection for Binance live price updates
-    const binanceSocket = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+    // WebSocket für Live Updates
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth@100ms`);
 
-    binanceSocket.onmessage = (event) => {
+    ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setBinancePrice(data.p); // 'p' is the price in the WebSocket data
-    };
+      
+      // Update Bids
+      const newBids = [...bids];
+      data.b.forEach(([price, quantity]) => {
+        const priceFloat = parseFloat(price);
+        const quantityFloat = parseFloat(quantity);
+        
+        const index = newBids.findIndex(bid => bid.price === priceFloat);
+        
+        if (quantityFloat === 0) {
+          if (index !== -1) newBids.splice(index, 1);
+        } else {
+          if (index !== -1) {
+            newBids[index].quantity = quantityFloat;
+          } else {
+            newBids.push({ price: priceFloat, quantity: quantityFloat });
+          }
+        }
+      });
+      newBids.sort((a, b) => b.price - a.price);
+      setBids(newBids.slice(0, 20));
 
-    // Set up WebSocket connection for Bybit live price updates
-    const bybitSocket = new WebSocket('wss://stream.bybit.com/realtime_public');
-
-    bybitSocket.onopen = () => {
-      // Subscribe to BTCUSDT trades
-      bybitSocket.send(JSON.stringify({
-        op: 'subscribe',
-        args: ['trade.BTCUSDT'],
-      }));
-    };
-
-    bybitSocket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.topic === 'trade.BTCUSDT' && data.data && data.data.length > 0) {
-        setBybitPrice(data.data[0].price); // Get the latest price from Bybit trade data
-      }
+      // Update Asks
+      const newAsks = [...asks];
+      data.a.forEach(([price, quantity]) => {
+        const priceFloat = parseFloat(price);
+        const quantityFloat = parseFloat(quantity);
+        
+        const index = newAsks.findIndex(ask => ask.price === priceFloat);
+        
+        if (quantityFloat === 0) {
+          if (index !== -1) newAsks.splice(index, 1);
+        } else {
+          if (index !== -1) {
+            newAsks[index].quantity = quantityFloat;
+          } else {
+            newAsks.push({ price: priceFloat, quantity: quantityFloat });
+          }
+        }
+      });
+      newAsks.sort((a, b) => a.price - b.price);
+      setAsks(newAsks.slice(0, 20));
     };
 
     return () => {
-      binanceSocket.close();
-      bybitSocket.close();
+      ws.close();
     };
-  }, []);
+  }, [symbol]);
+
+  const formatNumber = (num) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(num);
+  };
 
   return (
-    <div>
-      <p>Binance Price: {binancePrice ? `${binancePrice} USDT` : 'Loading...'}</p>
-      <p>Bybit Price: {bybitPrice ? `${bybitPrice} USDT` : 'Loading...'}</p>
+    <div className="orderbook">
+      <div className="orderbook-header">
+        <div className="price">Price</div>
+        <div className="quantity">Amount</div>
+        <div className="total">Total</div>
+      </div>
+      
+      <div className="asks">
+        {asks.map((ask, index) => (
+          <div key={`ask-${index}`} className="order-row ask">
+            <div className="price">{formatNumber(ask.price)}</div>
+            <div className="quantity">{formatNumber(ask.quantity)}</div>
+            <div className="total">{formatNumber(ask.price * ask.quantity)}</div>
+          </div>
+        ))}
+      </div>
+      
+      <div className="spread">
+        {asks.length > 0 && bids.length > 0 && (
+          <div>
+            Spread: {formatNumber(asks[0].price - bids[0].price)} (
+            {((asks[0].price - bids[0].price) / bids[0].price * 100).toFixed(3)}%)
+          </div>
+        )}
+      </div>
+      
+      <div className="bids">
+        {bids.map((bid, index) => (
+          <div key={`bid-${index}`} className="order-row bid">
+            <div className="price">{formatNumber(bid.price)}</div>
+            <div className="quantity">{formatNumber(bid.quantity)}</div>
+            <div className="total">{formatNumber(bid.price * bid.quantity)}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
 
-export default LivePrice;
+export default OrderBook;
