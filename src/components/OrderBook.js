@@ -186,72 +186,101 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
     };
 
     const setupBinanceWebSocket = () => {
-      ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth@100ms`);
+      connections.binance = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth@100ms`);
 
-      ws.onmessage = (event) => {
+      connections.binance.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        updateOrderBook(data.b, data.a);
+        const bids = data.b.map(([price, quantity]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity)
+        }));
+        const asks = data.a.map(([price, quantity]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity)
+        }));
+        updateExchangeData(EXCHANGES.BINANCE, bids, asks);
       };
 
-      ws.onerror = () => {
+      connections.binance.onerror = () => {
         setError('Binance WebSocket connection failed');
       };
     };
 
     const setupBybitWebSocket = () => {
-      ws = new WebSocket('wss://stream.bybit.com/v5/public/spot');
+      connections.bybit = new WebSocket('wss://stream.bybit.com/v5/public/spot');
 
-      ws.onopen = () => {
-        ws.send(JSON.stringify({
+      connections.bybit.onopen = () => {
+        connections.bybit.send(JSON.stringify({
           op: 'subscribe',
           args: [`orderbook.20.${symbol}`]
         }));
       };
 
-      ws.onmessage = (event) => {
+      connections.bybit.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.topic && data.topic.startsWith('orderbook') && data.data) {
-          updateOrderBook(data.data.b, data.data.a);
+          const bids = data.data.b.map(([price, quantity]) => ({
+            price: parseFloat(price),
+            quantity: parseFloat(quantity)
+          }));
+          const asks = data.data.a.map(([price, quantity]) => ({
+            price: parseFloat(price),
+            quantity: parseFloat(quantity)
+          }));
+          updateExchangeData(EXCHANGES.BYBIT, bids, asks);
         }
       };
 
-      ws.onerror = () => {
+      connections.bybit.onerror = () => {
         setError('Bybit WebSocket connection failed');
       };
     };
 
     const setupCoinbaseWebSocket = () => {
-      const exchangeSymbol = getExchangeSymbol();
-      ws = new WebSocket('wss://ws-feed.pro.coinbase.com');
+      const exchangeSymbol = getExchangeSymbol(EXCHANGES.COINBASE);
+      connections.coinbase = new WebSocket('wss://ws-feed.pro.coinbase.com');
 
-      ws.onopen = () => {
-        ws.send(JSON.stringify({
+      connections.coinbase.onopen = () => {
+        connections.coinbase.send(JSON.stringify({
           type: 'subscribe',
           product_ids: [exchangeSymbol],
           channels: ['level2']
         }));
       };
 
-      ws.onmessage = (event) => {
+      connections.coinbase.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.type === 'snapshot') {
-          setBids(data.bids.slice(0, 20).map(([price, size]) => ({
+          const bids = data.bids.slice(0, 20).map(([price, size]) => ({
             price: parseFloat(price),
             quantity: parseFloat(size)
-          })));
-          setAsks(data.asks.slice(0, 20).map(([price, size]) => ({
+          }));
+          const asks = data.asks.slice(0, 20).map(([price, size]) => ({
             price: parseFloat(price),
             quantity: parseFloat(size)
-          })));
+          }));
+          updateExchangeData(EXCHANGES.COINBASE, bids, asks);
         } else if (data.type === 'l2update') {
           const changes = data.changes;
-          const bids = changes.filter(c => c[0] === 'buy').map(c => [c[1], c[2]]);
-          const asks = changes.filter(c => c[0] === 'sell').map(c => [c[1], c[2]]);
-          updateOrderBook(bids, asks);
+          const bids = changes
+            .filter(c => c[0] === 'buy')
+            .map(([, price, size]) => ({
+              price: parseFloat(price),
+              quantity: parseFloat(size)
+            }));
+          const asks = changes
+            .filter(c => c[0] === 'sell')
+            .map(([, price, size]) => ({
+              price: parseFloat(price),
+              quantity: parseFloat(size)
+            }));
+          if (bids.length > 0 || asks.length > 0) {
+            updateExchangeData(EXCHANGES.COINBASE, bids, asks);
+          }
         }
       };
 
-      ws.onerror = () => {
+      connections.coinbase.onerror = () => {
         setError('Coinbase WebSocket connection failed');
       };
     };
@@ -302,30 +331,34 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
       }
     };
 
-    // Initialize based on selected exchange
-    switch (exchange) {
-      case EXCHANGES.BINANCE:
-        fetchBinanceOrderBook();
-        setupBinanceWebSocket();
-        break;
-      case EXCHANGES.BYBIT:
-        fetchBybitOrderBook();
-        setupBybitWebSocket();
-        break;
-      case EXCHANGES.COINBASE:
-        fetchCoinbaseOrderBook();
-        setupCoinbaseWebSocket();
-        break;
-      default:
-        setError('Unsupported exchange');
-    }
+    // Initialize enabled exchanges
+    enabledExchanges.forEach(exchangeId => {
+      switch (exchangeId) {
+        case EXCHANGES.BINANCE:
+          fetchBinanceOrderBook();
+          setupBinanceWebSocket();
+          break;
+        case EXCHANGES.BYBIT:
+          fetchBybitOrderBook();
+          setupBybitWebSocket();
+          break;
+        case EXCHANGES.COINBASE:
+          fetchCoinbaseOrderBook();
+          setupCoinbaseWebSocket();
+          break;
+        default:
+          break;
+      }
+    });
 
     return () => {
-      if (ws) {
-        ws.close();
-      }
+      Object.values(connections).forEach(connection => {
+        if (connection && connection.readyState === WebSocket.OPEN) {
+          connection.close();
+        }
+      });
     };
-  }, [symbol, exchange]);
+  }, [symbol, enabledExchanges]);
 
   const formatNumber = (num) => {
     return new Intl.NumberFormat('en-US', {
@@ -340,59 +373,68 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
 
   return (
     <div className="orderbook">
-      <div className="orderbook-header">
-        <div className="exchange">{exchange.toUpperCase()}</div>
-        <div className="symbol">{getExchangeSymbol()}</div>
-        <div className="price">Price</div>
-        <div className="quantity">Amount</div>
-        <div className="total">Total</div>
-      </div>
+      <OrderBookSettings
+        enabledExchanges={enabledExchanges}
+        onToggleExchange={handleToggleExchange}
+        symbol={symbol}
+      />
       
-      <div className="asks">
-        {asks.map((ask, index) => (
-          <div key={`ask-${index}`} className="order-row ask">
-            <div className="price">{formatNumber(ask.price)}</div>
-            <div className="quantity">{formatNumber(ask.quantity)}</div>
-            <div className="total">{formatNumber(ask.price * ask.quantity)}</div>
-            <div className="depth-visualization" style={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(255, 59, 48, 0.1)',
-              width: `${(ask.quantity / Math.max(...asks.map(a => a.quantity))) * 100}%`,
-              zIndex: 0
-            }} />
-          </div>
-        ))}
-      </div>
-      
-      <div className="spread">
-        {asks.length > 0 && bids.length > 0 && (
-          <div>
-            Spread: {formatNumber(asks[0].price - bids[0].price)} (
-            {((asks[0].price - bids[0].price) / bids[0].price * 100).toFixed(3)}%)
-          </div>
-        )}
-      </div>
-      
-      <div className="bids">
-        {bids.map((bid, index) => (
-          <div key={`bid-${index}`} className="order-row bid">
-            <div className="price">{formatNumber(bid.price)}</div>
-            <div className="quantity">{formatNumber(bid.quantity)}</div>
-            <div className="total">{formatNumber(bid.price * bid.quantity)}</div>
-            <div className="depth-visualization" style={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(52, 199, 89, 0.1)',
-              width: `${(bid.quantity / Math.max(...bids.map(b => b.quantity))) * 100}%`,
-              zIndex: 0
-            }} />
-          </div>
-        ))}
+      <div className="orderbook-content">
+        <div className="orderbook-header">
+          <div className="price">Price</div>
+          <div className="quantity">Amount</div>
+          <div className="total">Total</div>
+          <div className="exchanges">Sources</div>
+        </div>
+        
+        <div className="asks">
+          {asks.map((ask, index) => (
+            <div key={`ask-${index}`} className="order-row ask">
+              <div className="price">{formatNumber(ask.price)}</div>
+              <div className="quantity">{formatNumber(ask.quantity)}</div>
+              <div className="total">{formatNumber(ask.price * ask.quantity)}</div>
+              <div className="exchanges">
+                {ask.exchanges?.map(ex => (
+                  <span key={ex} className={`exchange-indicator ${ex}`} title={ex}>
+                    {ex[0].toUpperCase()}
+                  </span>
+                ))}
+              </div>
+              <div className="depth-visualization" style={{
+                width: `${(ask.quantity / Math.max(...asks.map(a => a.quantity))) * 100}%`
+              }} />
+            </div>
+          ))}
+        </div>
+        
+        <div className="spread">
+          {asks.length > 0 && bids.length > 0 && (
+            <div>
+              Spread: {formatNumber(asks[0].price - bids[0].price)} (
+              {((asks[0].price - bids[0].price) / bids[0].price * 100).toFixed(3)}%)
+            </div>
+          )}
+        </div>
+        
+        <div className="bids">
+          {bids.map((bid, index) => (
+            <div key={`bid-${index}`} className="order-row bid">
+              <div className="price">{formatNumber(bid.price)}</div>
+              <div className="quantity">{formatNumber(bid.quantity)}</div>
+              <div className="total">{formatNumber(bid.price * bid.quantity)}</div>
+              <div className="exchanges">
+                {bid.exchanges?.map(ex => (
+                  <span key={ex} className={`exchange-indicator ${ex}`} title={ex}>
+                    {ex[0].toUpperCase()}
+                  </span>
+                ))}
+              </div>
+              <div className="depth-visualization" style={{
+                width: `${(bid.quantity / Math.max(...bids.map(b => b.quantity))) * 100}%`
+              }} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
