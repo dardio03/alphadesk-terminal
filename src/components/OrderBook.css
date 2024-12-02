@@ -1,0 +1,42 @@
+.order-book-container {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 800px;
+    margin: auto;
+  }
+  
+  .order-book {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .order-book-side {
+    width: 45%;
+  }
+  
+  .order-book-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .order-book-table th,
+  .order-book-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: right;
+  }
+  
+  .bid-row {
+    background-color: #e6f4ea;
+  }
+  
+  .ask-row {
+    background-color: #f8e5e5;
+  }
+  
+  h2, h3 {
+    text-align: center;
+  }
