@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './OrderBook.css';
 
-const EXCHANGES = {
+export const EXCHANGES = {
   BINANCE: 'binance',
   BYBIT: 'bybit',
   COINBASE: 'coinbase'
@@ -11,23 +11,24 @@ const OrderBook = ({ symbol = 'BTCUSDT', exchange = EXCHANGES.BINANCE }) => {
   const [bids, setBids] = useState([]);
   const [asks, setAsks] = useState([]);
   const [lastUpdateId, setLastUpdateId] = useState(0);
+  const [error, setError] = useState(null);
+
+  // Convert symbol format based on exchange
+  const getExchangeSymbol = () => {
+    switch (exchange) {
+      case EXCHANGES.BINANCE:
+        return symbol;
+      case EXCHANGES.BYBIT:
+        return symbol;
+      case EXCHANGES.COINBASE:
+        return symbol.replace('USDT', '-USD');
+      default:
+        return symbol;
+    }
+  };
 
   useEffect(() => {
     let ws;
-    const [error, setError] = useState(null);
-
-    const getExchangeSymbol = () => {
-      switch (exchange) {
-        case EXCHANGES.BINANCE:
-          return symbol;
-        case EXCHANGES.BYBIT:
-          return symbol;
-        case EXCHANGES.COINBASE:
-          return symbol.replace('USDT', '-USD');
-        default:
-          return symbol;
-      }
-    };
     
     const fetchBinanceOrderBook = async () => {
       try {
