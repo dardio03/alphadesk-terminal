@@ -1,42 +1,116 @@
-.order-book-container {
-    padding: 20px;
-    background-color: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 800px;
-    margin: auto;
+.orderbook {
+  width: 100%;
+  max-width: 600px;
+  background-color: #1a1a1a;
+  color: #fff;
+  font-family: monospace;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.orderbook-error {
+  width: 100%;
+  max-width: 600px;
+  background-color: #ff3b30;
+  color: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  margin: 10px 0;
+  font-weight: bold;
+}
+
+.orderbook-header {
+  display: grid;
+  grid-template-columns: auto auto 1fr 1fr 1fr;
+  gap: 10px;
+  padding: 12px 8px;
+  border-bottom: 1px solid #333;
+  font-weight: bold;
+  text-align: right;
+  position: sticky;
+  top: 0;
+  background-color: #1a1a1a;
+  z-index: 10;
+}
+
+.orderbook-header .exchange {
+  text-align: left;
+  color: #007aff;
+}
+
+.orderbook-header .symbol {
+  text-align: left;
+  color: #5856d6;
+}
+
+.order-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 6px 8px;
+  text-align: right;
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.order-row:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.asks {
+  margin-bottom: 20px;
+}
+
+.bids {
+  margin-top: 20px;
+}
+
+.ask .price {
+  color: #ff3b30;
+}
+
+.bid .price {
+  color: #34c759;
+}
+
+.spread {
+  text-align: center;
+  padding: 10px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  margin: 15px 0;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+.price, .quantity, .total {
+  padding: 0 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.depth-visualization {
+  transition: width 0.3s ease;
+}
+
+@media (max-width: 600px) {
+  .orderbook {
+    padding: 10px;
+    font-size: 0.9em;
   }
-  
-  .order-book {
-    display: flex;
-    justify-content: space-between;
+
+  .orderbook-header {
+    grid-template-columns: auto 1fr 1fr;
   }
-  
-  .order-book-side {
-    width: 45%;
+
+  .orderbook-header .symbol,
+  .orderbook-header .total,
+  .order-row .total {
+    display: none;
   }
-  
-  .order-book-table {
-    width: 100%;
-    border-collapse: collapse;
+
+  .order-row {
+    grid-template-columns: 1fr 1fr;
   }
-  
-  .order-book-table th,
-  .order-book-table td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: right;
-  }
-  
-  .bid-row {
-    background-color: #e6f4ea;
-  }
-  
-  .ask-row {
-    background-color: #f8e5e5;
-  }
-  
-  h2, h3 {
-    text-align: center;
-  }
+}
