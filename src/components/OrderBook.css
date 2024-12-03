@@ -25,23 +25,65 @@
   font-weight: bold;
 }
 
-.orderbook-header {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto;
+.orderbook-sections {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+}
+
+.orderbook-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.section-header {
   padding: 12px 8px;
   border-bottom: 1px solid #333;
-  font-weight: bold;
-  text-align: right;
+  background-color: #1a1a1a;
   position: sticky;
   top: 0;
-  background-color: #1a1a1a;
   z-index: 10;
+}
+
+.section-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.column-headers {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  text-align: right;
+  font-size: 0.9em;
+  color: #888;
+}
+
+.section-content {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+  scrollbar-width: thin;
+  scrollbar-color: #333 #1a1a1a;
+}
+
+.section-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.section-content::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.section-content::-webkit-scrollbar-thumb {
+  background-color: #333;
+  border-radius: 3px;
 }
 
 .order-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
   padding: 6px 8px;
   text-align: right;
@@ -53,19 +95,11 @@
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-.asks {
-  margin-bottom: 20px;
-}
-
-.bids {
-  margin-top: 20px;
-}
-
-.ask .price {
+.price.sell {
   color: #ff3b30;
 }
 
-.bid .price {
+.price.buy {
   color: #34c759;
 }
 
@@ -74,48 +108,15 @@
   padding: 10px;
   background-color: rgba(255, 255, 255, 0.05);
   border-radius: 6px;
-  margin: 15px 0;
+  margin: 8px 0;
   font-size: 0.9em;
   font-weight: bold;
 }
 
-.price, .quantity, .total, .exchanges {
+.amount, .total, .price {
   padding: 0 8px;
   position: relative;
   z-index: 1;
-}
-
-.exchanges {
-  display: flex;
-  gap: 4px;
-  justify-content: flex-end;
-  min-width: 80px;
-}
-
-.exchange-indicator {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  font-size: 0.8em;
-  font-weight: bold;
-}
-
-.exchange-indicator.binance {
-  background-color: #f3ba2f;
-  color: #000;
-}
-
-.exchange-indicator.bybit {
-  background-color: #b50000;
-  color: #fff;
-}
-
-.exchange-indicator.coinbase {
-  background-color: #0052ff;
-  color: #fff;
 }
 
 .depth-visualization {
@@ -145,26 +146,7 @@
     padding: 10px;
   }
 
-  .orderbook-header {
-    grid-template-columns: 1fr 1fr auto;
-  }
-
-  .order-row {
-    grid-template-columns: 1fr 1fr auto;
-  }
-
-  .total,
-  .orderbook-header .total {
-    display: none;
-  }
-
-  .exchanges {
-    min-width: 60px;
-  }
-
-  .exchange-indicator {
-    width: 16px;
-    height: 16px;
-    font-size: 0.7em;
+  .section-content {
+    max-height: 300px;
   }
 }
