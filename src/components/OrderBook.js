@@ -26,9 +26,9 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
       case EXCHANGES.BINANCE:
         return symbol;
       case EXCHANGES.BYBIT:
-        return symbol;
+        return symbol.replace('USDT', 'USDT').toUpperCase();
       case EXCHANGES.COINBASE:
-        return symbol.replace('USDT', '-USD');
+        return symbol.replace('USDT', '-USD').toUpperCase();
       default:
         return symbol;
     }
@@ -134,23 +134,26 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
 
     const fetchBybitOrderBook = async () => {
       try {
-        const response = await fetch(`https://api.bybit.com/v5/market/orderbook?category=spot&symbol=${symbol}&limit=20`);
+        const bybitSymbol = getExchangeSymbol(EXCHANGES.BYBIT);
+        const response = await fetch(`https://api.bybit.com/v5/market/orderbook?category=spot&symbol=${bybitSymbol}&limit=20`);
         const data = await response.json();
         
         if (data.retCode !== 0) {
           throw new Error(data.retMsg);
         }
         
-        if (data.result) {
-          setBids(data.result.b.map(([price, quantity]) => ({
+        if (data.result && data.result.b && data.result.a) {
+          const bids = data.result.b.map(([price, quantity]) => ({
             price: parseFloat(price),
             quantity: parseFloat(quantity)
-          })));
+          }));
           
-          setAsks(data.result.a.map(([price, quantity]) => ({
+          const asks = data.result.a.map(([price, quantity]) => ({
             price: parseFloat(price),
             quantity: parseFloat(quantity)
-          })));
+          }));
+          
+          updateExchangeData(EXCHANGES.BYBIT, bids, asks);
         }
         setError(null);
       } catch (error) {
@@ -161,8 +164,8 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
 
     const fetchCoinbaseOrderBook = async () => {
       try {
-        const exchangeSymbol = getExchangeSymbol();
-        const response = await fetch(`https://api.pro.coinbase.com/products/${exchangeSymbol}/book?level=2`);
+        const exchangeSymbol = getExchangeSymbol(EXCHANGES.COINBASE);
+        const response = await fetch(`https://api.exchange.coinbase.com/products/${exchangeSymbol}/book?level=2`);
         const data = await response.json();
         
         if (data.message) {
@@ -207,38 +210,43 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
     };
 
     const setupBybitWebSocket = () => {
+      const bybitSymbol = getExchangeSymbol(EXCHANGES.BYBIT);
       connections.bybit = new WebSocket('wss://stream.bybit.com/v5/public/spot');
 
       connections.bybit.onopen = () => {
         connections.bybit.send(JSON.stringify({
           op: 'subscribe',
-          args: [`orderbook.20.${symbol}`]
+          args: [`orderbook.20.${bybitSymbol}`]
         }));
       };
 
       connections.bybit.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.topic && data.topic.startsWith('orderbook') && data.data) {
-          const bids = data.data.b.map(([price, quantity]) => ({
-            price: parseFloat(price),
-            quantity: parseFloat(quantity)
-          }));
-          const asks = data.data.a.map(([price, quantity]) => ({
-            price: parseFloat(price),
-            quantity: parseFloat(quantity)
-          }));
-          updateExchangeData(EXCHANGES.BYBIT, bids, asks);
+          const orderData = data.data;
+          if (orderData.b && orderData.a) {
+            const bids = orderData.b.map(([price, quantity]) => ({
+              price: parseFloat(price),
+              quantity: parseFloat(quantity)
+            }));
+            const asks = orderData.a.map(([price, quantity]) => ({
+              price: parseFloat(price),
+              quantity: parseFloat(quantity)
+            }));
+            updateExchangeData(EXCHANGES.BYBIT, bids, asks);
+          }
         }
       };
 
-      connections.bybit.onerror = () => {
+      connections.bybit.onerror = (error) => {
+        console.error('Bybit WebSocket error:', error);
         setError('Bybit WebSocket connection failed');
       };
     };
 
     const setupCoinbaseWebSocket = () => {
       const exchangeSymbol = getExchangeSymbol(EXCHANGES.COINBASE);
-      connections.coinbase = new WebSocket('wss://ws-feed.pro.coinbase.com');
+      connections.coinbase = new WebSocket('wss://ws-feed.exchange.coinbase.com');
 
       connections.coinbase.onopen = () => {
         connections.coinbase.send(JSON.stringify({
@@ -280,7 +288,8 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
         }
       };
 
-      connections.coinbase.onerror = () => {
+      connections.coinbase.onerror = (error) => {
+        console.error('Coinbase WebSocket error:', error);
         setError('Coinbase WebSocket connection failed');
       };
     };
