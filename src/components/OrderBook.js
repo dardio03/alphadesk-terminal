@@ -376,6 +376,18 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
     }).format(num);
   };
 
+  const handleScroll = (event) => {
+    const sections = document.querySelectorAll('.section-content');
+    const scrolledSection = event.target;
+    const scrollTop = scrolledSection.scrollTop;
+
+    sections.forEach(section => {
+      if (section !== scrolledSection) {
+        section.scrollTop = scrollTop;
+      }
+    });
+  };
+
   if (error) {
     return <div className="orderbook-error">{error}</div>;
   }
@@ -389,60 +401,71 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
       />
       
       <div className="orderbook-content">
-        <div className="orderbook-header">
-          <div className="price">Price</div>
-          <div className="quantity">Amount</div>
-          <div className="total">Total</div>
-          <div className="exchanges">Sources</div>
-        </div>
-        
-        <div className="asks">
-          {asks.map((ask, index) => (
-            <div key={`ask-${index}`} className="order-row ask">
-              <div className="price">{formatNumber(ask.price)}</div>
-              <div className="quantity">{formatNumber(ask.quantity)}</div>
-              <div className="total">{formatNumber(ask.price * ask.quantity)}</div>
-              <div className="exchanges">
-                {ask.exchanges?.map(ex => (
-                  <span key={ex} className={`exchange-indicator ${ex}`} title={ex}>
-                    {ex[0].toUpperCase()}
-                  </span>
-                ))}
+        <div className="orderbook-sections">
+          <div className="orderbook-section asks-section">
+            <div className="section-header">
+              <div className="section-title">Ask (Sell)</div>
+              <div className="column-headers">
+                <div className="amount">Amount</div>
+                <div className="total">Total</div>
+                <div className="price">Price</div>
               </div>
-              <div className="depth-visualization" style={{
-                width: `${(ask.quantity / Math.max(...asks.map(a => a.quantity))) * 100}%`
-              }} />
             </div>
-          ))}
-        </div>
-        
-        <div className="spread">
-          {asks.length > 0 && bids.length > 0 && (
-            <div>
-              Spread: {formatNumber(asks[0].price - bids[0].price)} (
-              {((asks[0].price - bids[0].price) / bids[0].price * 100).toFixed(3)}%)
+            <div className="section-content" onScroll={handleScroll}>
+              {asks.slice(0, 16).map((ask, index) => {
+                const totalUpToHere = asks
+                  .slice(0, index + 1)
+                  .reduce((sum, a) => sum + a.quantity, 0);
+                return (
+                  <div key={`ask-${index}`} className="order-row ask">
+                    <div className="amount">{formatNumber(ask.quantity)}</div>
+                    <div className="total">{formatNumber(totalUpToHere)}</div>
+                    <div className="price sell">{formatNumber(ask.price)}</div>
+                    <div className="depth-visualization" style={{
+                      width: `${(ask.quantity / Math.max(...asks.map(a => a.quantity))) * 100}%`
+                    }} />
+                  </div>
+                );
+              })}
             </div>
-          )}
-        </div>
-        
-        <div className="bids">
-          {bids.map((bid, index) => (
-            <div key={`bid-${index}`} className="order-row bid">
-              <div className="price">{formatNumber(bid.price)}</div>
-              <div className="quantity">{formatNumber(bid.quantity)}</div>
-              <div className="total">{formatNumber(bid.price * bid.quantity)}</div>
-              <div className="exchanges">
-                {bid.exchanges?.map(ex => (
-                  <span key={ex} className={`exchange-indicator ${ex}`} title={ex}>
-                    {ex[0].toUpperCase()}
-                  </span>
-                ))}
+          </div>
+
+          <div className="spread">
+            {asks.length > 0 && bids.length > 0 && (
+              <div>
+                Spread: {formatNumber(asks[0].price - bids[0].price)} (
+                {((asks[0].price - bids[0].price) / bids[0].price * 100).toFixed(3)}%)
               </div>
-              <div className="depth-visualization" style={{
-                width: `${(bid.quantity / Math.max(...bids.map(b => b.quantity))) * 100}%`
-              }} />
+            )}
+          </div>
+
+          <div className="orderbook-section bids-section">
+            <div className="section-header">
+              <div className="section-title">Bid (Buy)</div>
+              <div className="column-headers">
+                <div className="amount">Amount</div>
+                <div className="total">Total</div>
+                <div className="price">Price</div>
+              </div>
             </div>
-          ))}
+            <div className="section-content" onScroll={handleScroll}>
+              {bids.slice(0, 16).map((bid, index) => {
+                const totalUpToHere = bids
+                  .slice(0, index + 1)
+                  .reduce((sum, b) => sum + b.quantity, 0);
+                return (
+                  <div key={`bid-${index}`} className="order-row bid">
+                    <div className="amount">{formatNumber(bid.quantity)}</div>
+                    <div className="total">{formatNumber(totalUpToHere)}</div>
+                    <div className="price buy">{formatNumber(bid.price)}</div>
+                    <div className="depth-visualization" style={{
+                      width: `${(bid.quantity / Math.max(...bids.map(b => b.quantity))) * 100}%`
+                    }} />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
