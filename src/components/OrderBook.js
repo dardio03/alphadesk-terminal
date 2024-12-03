@@ -28,7 +28,18 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
       case EXCHANGES.BYBIT:
         return symbol.replace('USDT', 'USDT').toUpperCase();
       case EXCHANGES.COINBASE:
-        return symbol.replace('USDT', '-USD').toUpperCase();
+        // Handle different quote currencies
+        let base, quote;
+        if (symbol.endsWith('USDT')) {
+          [base, quote] = [symbol.slice(0, -4), 'USD'];
+        } else if (symbol.endsWith('USD')) {
+          [base, quote] = [symbol.slice(0, -3), 'USD'];
+        } else if (symbol.endsWith('BTC')) {
+          [base, quote] = [symbol.slice(0, -3), 'BTC'];
+        } else {
+          [base, quote] = [symbol.slice(0, -4), 'USD']; // Default to USD
+        }
+        return `${base}-${quote}`.toUpperCase();
       default:
         return symbol;
     }
@@ -165,6 +176,7 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
     const fetchCoinbaseOrderBook = async () => {
       try {
         const exchangeSymbol = getExchangeSymbol(EXCHANGES.COINBASE);
+        console.log('Fetching Coinbase orderbook for symbol:', exchangeSymbol);
         const response = await fetch(`https://api.exchange.coinbase.com/products/${exchangeSymbol}/book?level=2`);
         const data = await response.json();
         
@@ -172,16 +184,22 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
           throw new Error(data.message);
         }
         
-        setBids(data.bids.slice(0, 20).map(([price, size]) => ({
-          price: parseFloat(price),
-          quantity: parseFloat(size)
-        })));
-        
-        setAsks(data.asks.slice(0, 20).map(([price, size]) => ({
-          price: parseFloat(price),
-          quantity: parseFloat(size)
-        })));
-        setError(null);
+        if (data.bids && data.asks) {
+          const bids = data.bids.slice(0, 20).map(([price, size]) => ({
+            price: parseFloat(price),
+            quantity: parseFloat(size)
+          }));
+          
+          const asks = data.asks.slice(0, 20).map(([price, size]) => ({
+            price: parseFloat(price),
+            quantity: parseFloat(size)
+          }));
+          
+          updateExchangeData(EXCHANGES.COINBASE, bids, asks);
+          setError(null);
+        } else {
+          throw new Error('Invalid order book data structure');
+        }
       } catch (error) {
         console.error('Error loading Coinbase order book:', error);
         setError('Failed to load Coinbase order book');
@@ -246,9 +264,33 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
 
     const setupCoinbaseWebSocket = () => {
       const exchangeSymbol = getExchangeSymbol(EXCHANGES.COINBASE);
+      console.log('Setting up Coinbase WebSocket for symbol:', exchangeSymbol);
       connections.coinbase = new WebSocket('wss://ws-feed.exchange.coinbase.com');
 
+      let orderBook = {
+        bids: new Map(),
+        asks: new Map()
+      };
+
+      const updateLocalOrderBook = () => {
+        // Convert Maps to arrays and sort
+        const bids = Array.from(orderBook.bids.entries())
+          .map(([price, quantity]) => ({ price: parseFloat(price), quantity }))
+          .sort((a, b) => b.price - a.price)
+          .slice(0, 20);
+
+        const asks = Array.from(orderBook.asks.entries())
+          .map(([price, quantity]) => ({ price: parseFloat(price), quantity }))
+          .sort((a, b) => a.price - b.price)
+          .slice(0, 20);
+
+        if (bids.length > 0 || asks.length > 0) {
+          updateExchangeData(EXCHANGES.COINBASE, bids, asks);
+        }
+      };
+
       connections.coinbase.onopen = () => {
+        console.log('Coinbase WebSocket connected, subscribing to:', exchangeSymbol);
         connections.coinbase.send(JSON.stringify({
           type: 'subscribe',
           product_ids: [exchangeSymbol],
@@ -258,33 +300,36 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
 
       connections.coinbase.onmessage = (event) => {
         const data = JSON.parse(event.data);
+        
         if (data.type === 'snapshot') {
-          const bids = data.bids.slice(0, 20).map(([price, size]) => ({
-            price: parseFloat(price),
-            quantity: parseFloat(size)
-          }));
-          const asks = data.asks.slice(0, 20).map(([price, size]) => ({
-            price: parseFloat(price),
-            quantity: parseFloat(size)
-          }));
-          updateExchangeData(EXCHANGES.COINBASE, bids, asks);
+          console.log('Received Coinbase snapshot');
+          // Reset the order book
+          orderBook.bids = new Map();
+          orderBook.asks = new Map();
+
+          // Initialize with snapshot data
+          data.bids.forEach(([price, size]) => {
+            orderBook.bids.set(price, parseFloat(size));
+          });
+          data.asks.forEach(([price, size]) => {
+            orderBook.asks.set(price, parseFloat(size));
+          });
+
+          updateLocalOrderBook();
         } else if (data.type === 'l2update') {
-          const changes = data.changes;
-          const bids = changes
-            .filter(c => c[0] === 'buy')
-            .map(([, price, size]) => ({
-              price: parseFloat(price),
-              quantity: parseFloat(size)
-            }));
-          const asks = changes
-            .filter(c => c[0] === 'sell')
-            .map(([, price, size]) => ({
-              price: parseFloat(price),
-              quantity: parseFloat(size)
-            }));
-          if (bids.length > 0 || asks.length > 0) {
-            updateExchangeData(EXCHANGES.COINBASE, bids, asks);
-          }
+          // Update order book with changes
+          data.changes.forEach(([side, price, size]) => {
+            const sizeFloat = parseFloat(size);
+            const targetBook = side === 'buy' ? orderBook.bids : orderBook.asks;
+
+            if (sizeFloat === 0) {
+              targetBook.delete(price);
+            } else {
+              targetBook.set(price, sizeFloat);
+            }
+          });
+
+          updateLocalOrderBook();
         }
       };
 
