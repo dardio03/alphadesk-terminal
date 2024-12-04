@@ -1,7 +1,9 @@
 import React from 'react';
 import { Rnd } from 'react-rnd';
 import TradingViewWidget from './components/TradingViewWidget';
-import OrderBook, { EXCHANGES } from './components/OrderBook';
+import OrderBook from './components/OrderBook';
+import OrderBookChanges from './components/OrderBookChanges';
+import PriceRange from './components/PriceRange';
 import LivePrice from './components/LivePrice';
 import './App.css';
 
@@ -52,7 +54,37 @@ const App = () => {
         bounds="window"
       >
         <div className="widget-container dark">
-          <OrderBook symbol="BTCUSDT" exchange={EXCHANGES.BINANCE} />
+          <OrderBook symbol="BTCUSDT" />
+        </div>
+      </Rnd>
+      <Rnd
+        default={{
+          x: 300,
+          y: 400,
+          width: 400,
+          height: 300,
+        }}
+        minWidth={300}
+        minHeight={200}
+        bounds="window"
+      >
+        <div className="widget-container dark">
+          <OrderBookChanges symbol="BTCUSDT" />
+        </div>
+      </Rnd>
+      <Rnd
+        default={{
+          x: 400,
+          y: 500,
+          width: 600,
+          height: 200,
+        }}
+        minWidth={400}
+        minHeight={150}
+        bounds="window"
+      >
+        <div className="widget-container dark">
+          <PriceRange symbol="BTCUSDT" />
         </div>
       </Rnd>
     </div>

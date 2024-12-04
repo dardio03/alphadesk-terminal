@@ -1,4 +1,5 @@
 import React from 'react';
+import { EXCHANGES } from './OrderBook';
 import './OrderBookSettings.css';
 
 const OrderBookSettings = ({ 
@@ -13,30 +14,16 @@ const OrderBookSettings = ({
         <span className="settings-symbol">{symbol}</span>
       </div>
       <div className="exchange-toggles">
-        <label className="exchange-toggle">
-          <input
-            type="checkbox"
-            checked={enabledExchanges.includes('binance')}
-            onChange={() => onToggleExchange('binance')}
-          />
-          <span className="toggle-label">Binance</span>
-        </label>
-        <label className="exchange-toggle">
-          <input
-            type="checkbox"
-            checked={enabledExchanges.includes('bybit')}
-            onChange={() => onToggleExchange('bybit')}
-          />
-          <span className="toggle-label">Bybit</span>
-        </label>
-        <label className="exchange-toggle">
-          <input
-            type="checkbox"
-            checked={enabledExchanges.includes('coinbase')}
-            onChange={() => onToggleExchange('coinbase')}
-          />
-          <span className="toggle-label">Coinbase</span>
-        </label>
+        {Object.entries(EXCHANGES).map(([key, value]) => (
+          <label key={value} className="exchange-toggle">
+            <input
+              type="checkbox"
+              checked={enabledExchanges.includes(value)}
+              onChange={() => onToggleExchange(value)}
+            />
+            <span className="toggle-label">{key.charAt(0) + key.slice(1).toLowerCase()}</span>
+          </label>
+        ))}
       </div>
     </div>
   );
