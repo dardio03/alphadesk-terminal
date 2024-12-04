@@ -1,7 +1,15 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import OrderBookSettings from './OrderBookSettings';
-import { useOrderBookWebSocket, EXCHANGES } from '../hooks/useOrderBookWebSocket';
+import { useBinanceWebSocket } from '../hooks/useBinanceWebSocket';
+import { useBybitWebSocket } from '../hooks/useBybitWebSocket';
+import { useCoinbaseWebSocket } from '../hooks/useCoinbaseWebSocket';
 import './OrderBook.css';
+
+export const EXCHANGES = {
+  BINANCE: 'BINANCE',
+  BYBIT: 'BYBIT',
+  COINBASE: 'COINBASE'
+};
 
 const OrderBook = ({ symbol = 'BTCUSDT' }) => {
   const [enabledExchanges, setEnabledExchanges] = useState([EXCHANGES.BINANCE]);
@@ -24,10 +32,10 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
     });
   };
 
-  const handleOrderBookUpdate = useCallback((exchange, bids, asks) => {
+  const createHandleOrderBookUpdate = useCallback((exchange) => (data) => {
     setExchangeData(prev => ({
       ...prev,
-      [exchange]: { bids, asks }
+      [exchange]: data
     }));
   }, []);
 
@@ -35,18 +43,26 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
     setError(errorMessage);
   }, []);
 
-  // Use our custom WebSocket hook
-  useOrderBookWebSocket(symbol, enabledExchanges, handleOrderBookUpdate, handleError);
+  // Use WebSocket hooks for each enabled exchange
+  if (enabledExchanges.includes(EXCHANGES.BINANCE)) {
+    useBinanceWebSocket(symbol, createHandleOrderBookUpdate(EXCHANGES.BINANCE), handleError);
+  }
+  if (enabledExchanges.includes(EXCHANGES.BYBIT)) {
+    useBybitWebSocket(symbol, createHandleOrderBookUpdate(EXCHANGES.BYBIT), handleError);
+  }
+  if (enabledExchanges.includes(EXCHANGES.COINBASE)) {
+    useCoinbaseWebSocket(symbol, createHandleOrderBookUpdate(EXCHANGES.COINBASE), handleError);
+  }
 
   // Aggregate order book data from all enabled exchanges
-  const aggregateOrderBook = useCallback(() => {
+  useEffect(() => {
     const allBids = [];
     const allAsks = [];
 
     enabledExchanges.forEach(exchange => {
-      const { bids, asks } = exchangeData[exchange];
-      allBids.push(...bids.map(bid => ({ ...bid, exchange })));
-      allAsks.push(...asks.map(ask => ({ ...ask, exchange })));
+      const { bids: exchangeBids, asks: exchangeAsks } = exchangeData[exchange];
+      allBids.push(...exchangeBids.map(bid => ({ ...bid, exchange })));
+      allAsks.push(...exchangeAsks.map(ask => ({ ...ask, exchange })));
     });
 
     // Sort and aggregate orders at the same price level
@@ -82,10 +98,7 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
     setAsks(aggregatedAsks);
   }, [enabledExchanges, exchangeData]);
 
-  // Update aggregated data when exchange data changes
-  useEffect(() => {
-    aggregateOrderBook();
-  }, [exchangeData, aggregateOrderBook]);
+
 
   const formatNumber = (num) => {
     return new Intl.NumberFormat('en-US', {
