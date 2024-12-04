@@ -83,28 +83,24 @@ const OrderBookChanges = ({ symbol = 'BTCUSDT' }) => {
     console.error('OrderBookChanges error:', error);
   }, []);
 
-  // Use WebSocket hooks for each enabled exchange
-  if (enabledExchanges.includes(EXCHANGES.BINANCE)) {
-    useBinanceWebSocket(
-      symbol,
-      (data) => handleOrderBookUpdate(EXCHANGES.BINANCE, data),
-      handleError
-    );
-  }
-  if (enabledExchanges.includes(EXCHANGES.BYBIT)) {
-    useBybitWebSocket(
-      symbol,
-      (data) => handleOrderBookUpdate(EXCHANGES.BYBIT, data),
-      handleError
-    );
-  }
-  if (enabledExchanges.includes(EXCHANGES.COINBASE)) {
-    useCoinbaseWebSocket(
-      symbol,
-      (data) => handleOrderBookUpdate(EXCHANGES.COINBASE, data),
-      handleError
-    );
-  }
+  // Use WebSocket hooks for each exchange
+  useBinanceWebSocket(
+    symbol,
+    (data) => enabledExchanges.includes(EXCHANGES.BINANCE) && handleOrderBookUpdate(EXCHANGES.BINANCE, data),
+    handleError
+  );
+
+  useBybitWebSocket(
+    symbol,
+    (data) => enabledExchanges.includes(EXCHANGES.BYBIT) && handleOrderBookUpdate(EXCHANGES.BYBIT, data),
+    handleError
+  );
+
+  useCoinbaseWebSocket(
+    symbol,
+    (data) => enabledExchanges.includes(EXCHANGES.COINBASE) && handleOrderBookUpdate(EXCHANGES.COINBASE, data),
+    handleError
+  );
 
   // Calculate the maximum value for scaling
   const maxValue = Math.max(

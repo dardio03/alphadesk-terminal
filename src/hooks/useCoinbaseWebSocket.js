@@ -6,6 +6,11 @@ export const useCoinbaseWebSocket = (symbol, onData, onError) => {
   const [ws, setWs] = useState(null);
 
   const connect = useCallback(() => {
+    // If the callback is a no-op function (disabled), don't connect
+    if (onData.toString() === '() => false') {
+      return () => {};
+    }
+
     const websocket = new WebSocket(COINBASE_WS_URL);
 
     websocket.onopen = () => {

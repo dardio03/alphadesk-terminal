@@ -43,16 +43,24 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
     setError(errorMessage);
   }, []);
 
-  // Use WebSocket hooks for each enabled exchange
-  if (enabledExchanges.includes(EXCHANGES.BINANCE)) {
-    useBinanceWebSocket(symbol, createHandleOrderBookUpdate(EXCHANGES.BINANCE), handleError);
-  }
-  if (enabledExchanges.includes(EXCHANGES.BYBIT)) {
-    useBybitWebSocket(symbol, createHandleOrderBookUpdate(EXCHANGES.BYBIT), handleError);
-  }
-  if (enabledExchanges.includes(EXCHANGES.COINBASE)) {
-    useCoinbaseWebSocket(symbol, createHandleOrderBookUpdate(EXCHANGES.COINBASE), handleError);
-  }
+  // Use WebSocket hooks for each exchange
+  useBinanceWebSocket(
+    symbol,
+    (data) => enabledExchanges.includes(EXCHANGES.BINANCE) && createHandleOrderBookUpdate(EXCHANGES.BINANCE)(data),
+    handleError
+  );
+
+  useBybitWebSocket(
+    symbol,
+    (data) => enabledExchanges.includes(EXCHANGES.BYBIT) && createHandleOrderBookUpdate(EXCHANGES.BYBIT)(data),
+    handleError
+  );
+
+  useCoinbaseWebSocket(
+    symbol,
+    (data) => enabledExchanges.includes(EXCHANGES.COINBASE) && createHandleOrderBookUpdate(EXCHANGES.COINBASE)(data),
+    handleError
+  );
 
   // Aggregate order book data from all enabled exchanges
   useEffect(() => {
