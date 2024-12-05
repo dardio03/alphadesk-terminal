@@ -4,14 +4,12 @@ import TradingViewWidget from './components/TradingViewWidget';
 import OrderBook from './components/OrderBook';
 import OrderBookChanges from './components/OrderBookChanges';
 import PriceRange from './components/PriceRange';
-import LivePrice from './components/LivePrice';
 import './App.css';
 
 
 const App = () => {
   return (
     <div>
-      <h1>AlphaDesk Terminal</h1>
       <Rnd
         default={{
           x: 50,
@@ -29,8 +27,8 @@ const App = () => {
       </Rnd>
       <Rnd
         default={{
-          x: 100,
-          y: 200,
+          x: 0,
+          y: 0,
           width: 400,
           height: 300,
         }}
@@ -39,28 +37,13 @@ const App = () => {
         bounds="window"
       >
         <div className="widget-container">
-          <LivePrice />
-        </div>
-      </Rnd>
-      <Rnd
-        default={{
-          x: 200,
-          y: 300,
-          width: 500,
-          height: 400,
-        }}
-        minWidth={300}
-        minHeight={200}
-        bounds="window"
-      >
-        <div className="widget-container dark">
           <OrderBook symbol="BTCUSDT" />
         </div>
       </Rnd>
       <Rnd
         default={{
-          x: 300,
-          y: 400,
+          x: '0',
+          y: 50,
           width: 400,
           height: 300,
         }}
@@ -68,14 +51,14 @@ const App = () => {
         minHeight={200}
         bounds="window"
       >
-        <div className="widget-container dark">
+        <div className="widget-container">
           <OrderBookChanges symbol="BTCUSDT" />
         </div>
       </Rnd>
       <Rnd
         default={{
-          x: 400,
-          y: 500,
+          x: 50,
+          y: 50,
           width: 600,
           height: 200,
         }}
@@ -83,7 +66,7 @@ const App = () => {
         minHeight={150}
         bounds="window"
       >
-        <div className="widget-container dark">
+        <div className="widget-container">
           <PriceRange symbol="BTCUSDT" />
         </div>
       </Rnd>

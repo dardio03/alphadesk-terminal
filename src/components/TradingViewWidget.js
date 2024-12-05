@@ -18,7 +18,7 @@ const TradingViewWidget = () => {
           locale: "en",
           width: "100%",
           height: "500",
-          hide_side_toolbar: false, // Zeigt die Seitenwerkzeuge an
+          hide_side_toolbar: false, 
           enable_publishing: false,
           allow_symbol_change: true,
         });
