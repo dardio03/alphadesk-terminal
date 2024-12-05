@@ -12,12 +12,12 @@ const App = () => {
     <div className="app-container">
       <Rnd
         default={{
-          x: 20,
-          y: 20,
+          x: 16,
+          y: 16,
           width: 800,
           height: 400,
         }}
-        minWidth={400}
+        minWidth={600}
         minHeight={300}
         bounds="window"
         className="trading-view-widget"
@@ -28,8 +28,8 @@ const App = () => {
       </Rnd>
       <Rnd
         default={{
-          x: 840,
-          y: 20,
+          x: 832,
+          y: 16,
           width: 400,
           height: 300,
         }}
@@ -39,13 +39,14 @@ const App = () => {
         className="price-range-widget"
       >
         <div className="widget-container">
+          <div className="widget-header">Price Range</div>
           <PriceRange symbol="BTCUSDT" />
         </div>
       </Rnd>
       <Rnd
         default={{
-          x: 20,
-          y: 440,
+          x: 16,
+          y: 432,
           width: 400,
           height: 500,
         }}
@@ -55,13 +56,14 @@ const App = () => {
         className="order-book-widget"
       >
         <div className="widget-container">
+          <div className="widget-header">Order Book</div>
           <OrderBook symbol="BTCUSDT" />
         </div>
       </Rnd>
       <Rnd
         default={{
-          x: 440,
-          y: 440,
+          x: 432,
+          y: 432,
           width: 380,
           height: 500,
         }}
@@ -71,6 +73,7 @@ const App = () => {
         className="order-book-changes-widget"
       >
         <div className="widget-container">
+          <div className="widget-header">Order Book Changes</div>
           <OrderBookChanges symbol="BTCUSDT" />
         </div>
       </Rnd>
