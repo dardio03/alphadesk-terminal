@@ -6,6 +6,11 @@ export const useBybitWebSocket = (symbol, onData, onError) => {
   const [ws, setWs] = useState(null);
 
   const connect = useCallback(() => {
+    // If the callback is a no-op function (disabled), don't connect
+    if (onData.toString() === '() => false') {
+      return () => {};
+    }
+
     const websocket = new WebSocket(BYBIT_WS_URL);
 
     websocket.onopen = () => {
