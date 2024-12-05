@@ -47,10 +47,10 @@ const App = () => {
           x: 20,
           y: 440,
           width: 400,
-          height: 300,
+          height: 500,
         }}
         minWidth={300}
-        minHeight={200}
+        minHeight={400}
         bounds="window"
         className="order-book-widget"
       >
@@ -63,10 +63,10 @@ const App = () => {
           x: 440,
           y: 440,
           width: 380,
-          height: 300,
+          height: 500,
         }}
         minWidth={300}
-        minHeight={200}
+        minHeight={400}
         bounds="window"
         className="order-book-changes-widget"
       >
