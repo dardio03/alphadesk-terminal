@@ -23,6 +23,7 @@ const App = () => {
         className="trading-view-widget"
       >
         <div className="widget-container">
+          <div className="widget-header">Trading View</div>
           <TradingViewWidget />
         </div>
       </Rnd>

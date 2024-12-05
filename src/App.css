@@ -145,6 +145,7 @@ tr:hover td {
   }
 }
 
+/* Z-index for draggable widgets */
 .trading-view-widget,
 .price-range-widget,
 .order-book-widget,
