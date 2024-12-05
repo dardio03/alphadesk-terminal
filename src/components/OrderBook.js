@@ -40,27 +40,34 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
   }, []);
 
   const handleError = useCallback((errorMessage) => {
-    setError(errorMessage);
+    console.warn(errorMessage); // Log the error but don't set it unless critical
+    if (errorMessage.includes('Failed to connect') || errorMessage.includes('Failed to parse')) {
+      setError(errorMessage);
+    }
   }, []);
 
+  const handleBinanceData = useCallback((data) => {
+    if (enabledExchanges.includes(EXCHANGES.BINANCE)) {
+      createHandleOrderBookUpdate(EXCHANGES.BINANCE)(data);
+    }
+  }, [enabledExchanges, createHandleOrderBookUpdate]);
+
+  const handleBybitData = useCallback((data) => {
+    if (enabledExchanges.includes(EXCHANGES.BYBIT)) {
+      createHandleOrderBookUpdate(EXCHANGES.BYBIT)(data);
+    }
+  }, [enabledExchanges, createHandleOrderBookUpdate]);
+
+  const handleCoinbaseData = useCallback((data) => {
+    if (enabledExchanges.includes(EXCHANGES.COINBASE)) {
+      createHandleOrderBookUpdate(EXCHANGES.COINBASE)(data);
+    }
+  }, [enabledExchanges, createHandleOrderBookUpdate]);
+
   // Use WebSocket hooks for each exchange
-  useBinanceWebSocket(
-    symbol,
-    (data) => enabledExchanges.includes(EXCHANGES.BINANCE) && createHandleOrderBookUpdate(EXCHANGES.BINANCE)(data),
-    handleError
-  );
-
-  useBybitWebSocket(
-    symbol,
-    (data) => enabledExchanges.includes(EXCHANGES.BYBIT) && createHandleOrderBookUpdate(EXCHANGES.BYBIT)(data),
-    handleError
-  );
-
-  useCoinbaseWebSocket(
-    symbol,
-    (data) => enabledExchanges.includes(EXCHANGES.COINBASE) && createHandleOrderBookUpdate(EXCHANGES.COINBASE)(data),
-    handleError
-  );
+  useBinanceWebSocket(symbol, handleBinanceData, handleError);
+  useBybitWebSocket(symbol, handleBybitData, handleError);
+  useCoinbaseWebSocket(symbol, handleCoinbaseData, handleError);
 
   // Aggregate order book data from all enabled exchanges
   useEffect(() => {
@@ -127,12 +134,9 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
     });
   };
 
-  if (error) {
-    return <div className="orderbook-error">{error}</div>;
-  }
-
   return (
     <div className="orderbook">
+      {error && <div className="orderbook-error">{error}</div>}
       <OrderBookSettings
         enabledExchanges={enabledExchanges}
         onToggleExchange={handleToggleExchange}
