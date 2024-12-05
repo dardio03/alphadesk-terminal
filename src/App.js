@@ -9,17 +9,18 @@ import './App.css';
 
 const App = () => {
   return (
-    <div>
+    <div className="app-container">
       <Rnd
         default={{
-          x: 50,
-          y: 50,
+          x: 20,
+          y: 20,
           width: 800,
-          height: 600,
+          height: 400,
         }}
         minWidth={400}
         minHeight={300}
         bounds="window"
+        className="trading-view-widget"
       >
         <div className="widget-container">
           <TradingViewWidget />
@@ -27,14 +28,31 @@ const App = () => {
       </Rnd>
       <Rnd
         default={{
-          x: 0,
-          y: 0,
-          width: 400,
+          x: 840,
+          y: 20,
+          width: 600,
+          height: 400,
+        }}
+        minWidth={400}
+        minHeight={150}
+        bounds="window"
+        className="price-range-widget"
+      >
+        <div className="widget-container">
+          <PriceRange symbol="BTCUSDT" />
+        </div>
+      </Rnd>
+      <Rnd
+        default={{
+          x: 20,
+          y: 440,
+          width: 800,
           height: 300,
         }}
         minWidth={300}
         minHeight={200}
         bounds="window"
+        className="order-book-widget"
       >
         <div className="widget-container">
           <OrderBook symbol="BTCUSDT" />
@@ -42,32 +60,18 @@ const App = () => {
       </Rnd>
       <Rnd
         default={{
-          x: '0',
-          y: 50,
-          width: 400,
+          x: 840,
+          y: 440,
+          width: 600,
           height: 300,
         }}
         minWidth={300}
         minHeight={200}
         bounds="window"
+        className="order-book-changes-widget"
       >
         <div className="widget-container">
           <OrderBookChanges symbol="BTCUSDT" />
-        </div>
-      </Rnd>
-      <Rnd
-        default={{
-          x: 50,
-          y: 50,
-          width: 600,
-          height: 200,
-        }}
-        minWidth={400}
-        minHeight={150}
-        bounds="window"
-      >
-        <div className="widget-container">
-          <PriceRange symbol="BTCUSDT" />
         </div>
       </Rnd>
     </div>
