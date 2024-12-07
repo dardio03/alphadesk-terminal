@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useBinanceWebSocket } from '../hooks/useBinanceWebSocket';
-import { useBybitWebSocket } from '../hooks/useBybitWebSocket';
-import { useCoinbaseWebSocket } from '../hooks/useCoinbaseWebSocket';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { EXCHANGES } from './OrderBook';
 import './PriceRange.css';
 
-// Exchange icons using emoji for simplicity
-// In a real app, you might want to use SVG icons instead
+// Import SVG icons
+import { ReactComponent as BinanceIcon } from '../assets/exchanges/BINANCE.svg';
+import { ReactComponent as BybitIcon } from '../assets/exchanges/BYBIT.svg';
+import { ReactComponent as CoinbaseIcon } from '../assets/exchanges/COINBASE.svg';
+
+// Exchange icons using SVG components
 const EXCHANGE_ICONS = {
-  [EXCHANGES.BINANCE]: '🟡', // Yellow circle for Binance
-  [EXCHANGES.BYBIT]: '🔵',   // Blue circle for Bybit
-  [EXCHANGES.COINBASE]: '🟢', // Green circle for Coinbase
+  [EXCHANGES.BINANCE]: BinanceIcon,
+  [EXCHANGES.BYBIT]: BybitIcon,
+  [EXCHANGES.COINBASE]: CoinbaseIcon,
 };
 
 const PriceRange = ({ symbol = 'BTCUSDT' }) => {
@@ -25,6 +26,8 @@ const PriceRange = ({ symbol = 'BTCUSDT' }) => {
     max: 0,
     range: 0,
   });
+
+  const workerRef = useRef(null);
 
   // Calculate the position for an exchange's price marker
   const calculatePosition = (price) => {
@@ -48,26 +51,31 @@ const PriceRange = ({ symbol = 'BTCUSDT' }) => {
     }
   }, [prices]);
 
-  // Handle price updates from each exchange
-  const createPriceHandler = (exchange) => (data) => {
-    if (data.bids && data.bids.length > 0 && data.asks && data.asks.length > 0) {
-      // Calculate mid price between best bid and best ask
-      const midPrice = (data.bids[0].price + data.asks[0].price) / 2;
+  useEffect(() => {
+    // Create a new worker
+    workerRef.current = new Worker(new URL('../worker/worker.ts', import.meta.url));
+
+    // Set up message handler
+    workerRef.current.onmessage = (event) => {
+      const { exchange, price } = event.data;
       setPrices(prev => ({
         ...prev,
-        [exchange]: midPrice,
+        [exchange]: price,
       }));
-    }
-  };
+    };
+
+    // Initialize the worker with the symbol
+    workerRef.current.postMessage({ type: 'INIT', payload: { symbol } });
+
+    // Clean up the worker when the component unmounts
+    return () => {
+      workerRef.current.terminate();
+    };
+  }, [symbol]);
 
   const handleError = useCallback((error) => {
     console.error('PriceRange error:', error);
   }, []);
-
-  // Use WebSocket hooks for each exchange
-  useBinanceWebSocket(symbol, createPriceHandler(EXCHANGES.BINANCE), handleError);
-  useBybitWebSocket(symbol, createPriceHandler(EXCHANGES.BYBIT), handleError);
-  useCoinbaseWebSocket(symbol, createPriceHandler(EXCHANGES.COINBASE), handleError);
 
   const formatPrice = (price) => {
     return price?.toFixed(2) || '-';
@@ -78,9 +86,9 @@ const PriceRange = ({ symbol = 'BTCUSDT' }) => {
       <div className="price-range-header">
         <h3>Price Range - {symbol}</h3>
         <div className="exchange-legend">
-          {Object.entries(EXCHANGE_ICONS).map(([exchange, icon]) => (
+          {Object.entries(EXCHANGE_ICONS).map(([exchange, Icon]) => (
             <div key={exchange} className="legend-item">
-              <span className="icon">{icon}</span>
+              <span className="icon"><Icon width={16} height={16} /></span>
               <span className="exchange-name">
                 {exchange.charAt(0) + exchange.slice(1).toLowerCase()}
               </span>
@@ -97,8 +105,9 @@ const PriceRange = ({ symbol = 'BTCUSDT' }) => {
             <span className="max-price">${formatPrice(priceRange.max)}</span>
           </div>
           <div className="price-track">
-            {Object.entries(prices).map(([exchange, price]) => (
-              price !== null && (
+            {Object.entries(prices).map(([exchange, price]) => {
+              const Icon = EXCHANGE_ICONS[exchange];
+              return price !== null && (
                 <div
                   key={exchange}
                   className="price-marker"
@@ -107,10 +116,10 @@ const PriceRange = ({ symbol = 'BTCUSDT' }) => {
                   }}
                   title={`${exchange}: $${formatPrice(price)}`}
                 >
-                  {EXCHANGE_ICONS[exchange]}
+                  <Icon width={16} height={16} />
                 </div>
-              )
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
