@@ -39,6 +39,7 @@ html, body {
   border-radius: 4px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   position: absolute;
+  box-sizing: border-box;
 }
 
 .widget-container {
@@ -126,17 +127,16 @@ html, body {
   z-index: 40;
 }
 
-/* Ensure widgets don't overlap */
-.widget {
-  margin: 4px;
-  box-sizing: border-box;
-}
-
 /* Adjust content inside widgets */
 .widget-container > div {
   width: 100%;
   height: calc(100% - 40px); /* Adjust based on your header height */
   overflow: auto;
+}
+
+/* Ensure proper spacing between widgets */
+.scrollable-content {
+  padding: 5px;
 }
 
 .widget-container {
