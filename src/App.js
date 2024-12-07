@@ -8,10 +8,10 @@ import './App.css';
 
 const App = () => {
   const [widgets, setWidgets] = useState({
-    tradingView: { x: 5, y: 5, width: '49%', height: '59%' },
-    priceRange: { x: '51%', y: 5, width: '48%', height: '59%' },
-    orderBook: { x: 5, y: '61%', width: '49%', height: '38%' },
-    orderBookChanges: { x: '51%', y: '61%', width: '48%', height: '38%' },
+    tradingView: { x: 5, y: 5, width: '65%', height: '60%' },
+    priceRange: { x: '70%', y: 5, width: '29%', height: '60%' },
+    orderBook: { x: 5, y: '65%', width: '32%', height: '34%' },
+    orderBookChanges: { x: '37%', y: '65%', width: '32%', height: '34%' },
   });
 
   const updateWidget = (key, newPosition) => {

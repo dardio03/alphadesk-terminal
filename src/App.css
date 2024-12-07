@@ -44,6 +44,29 @@ html, body {
   transition: all 0.3s ease;
 }
 
+/* Ensure widgets don't overlap */
+.widget:not(:last-child) {
+  margin-right: 5px;
+  margin-bottom: 5px;
+}
+
+/* Specific styles for each widget */
+.tradingView-widget {
+  z-index: 10;
+}
+
+.priceRange-widget {
+  z-index: 20;
+}
+
+.orderBook-widget {
+  z-index: 30;
+}
+
+.orderBookChanges-widget {
+  z-index: 40;
+}
+
 .widget-container {
   width: 100%;
   height: 100%;
