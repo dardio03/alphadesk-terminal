@@ -32,10 +32,14 @@ html, body {
   overflow-y: auto;
   padding: 16px;
   box-sizing: border-box;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  grid-auto-rows: minmax(300px, auto);
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.bottom-widgets {
+  display: flex;
+  flex-wrap: wrap;
+  height: 50%;
 }
 
 .trading-view-widget,
@@ -45,6 +49,71 @@ html, body {
   position: relative;
   width: 100%;
   height: 100%;
+}
+
+.widget-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background-color: var(--widget-bg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.exchange-select-container {
+  display: flex;
+  align-items: center;
+  background-color: var(--widget-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.exchange-icon {
+  margin-right: 4px;
+  color: var(--text-secondary);
+}
+
+.exchange-select {
+  background-color: transparent;
+  color: var(--text-primary);
+  border: none;
+  font-size: 0.9rem;
+  padding: 2px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+}
+
+.exchange-select:focus {
+  outline: none;
+}
+
+/* Style for resize handles */
+.react-draggable-dragging {
+  z-index: 1000;
+}
+
+.react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  right: 0;
+  background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2IDYiIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOiNmZmZmZmYwMCIgeD0iMHB4IiB5PSIwcHgiIHdpZHRoPSI2cHgiIGhlaWdodD0iNnB4Ij48ZyBvcGFjaXR5PSIwLjMwMiI+PHBhdGggZD0iTSA2IDYgTCAwIDYgTCAwIDQuMiBMIDQgNC4yIEwgNC4yIDQuMiBMIDQuMiAwIEwgNiAwIEwgNiA2IEwgNiA2IFoiIGZpbGw9IiMwMDAwMDAiLz48L2c+PC9zdmc+');
+  background-position: bottom right;
+  padding: 0 3px 3px 0;
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  box-sizing: border-box;
+  cursor: se-resize;
 }
 
 .widget-container {
