@@ -8,8 +8,8 @@ import './App.css';
 
 const App = () => {
   const [widgets, setWidgets] = useState({
-    tradingView: { x: 0, y: 0, width: '70%', height: '60%' },
-    priceRange: { x: '70%', y: 0, width: '30%', height: '30%' },
+    tradingView: { x: 0, y: 0, width: '50%', height: '60%' },
+    priceRange: { x: '50%', y: 0, width: '50%', height: '60%' },
     orderBook: { x: 0, y: '60%', width: '50%', height: '40%' },
     orderBookChanges: { x: '50%', y: '60%', width: '50%', height: '40%' },
   });
@@ -20,7 +20,8 @@ const App = () => {
 
   const renderWidget = (key, content, title, exchangeSelect = false) => (
     <Rnd
-      default={widgets[key]}
+      position={{ x: widgets[key].x, y: widgets[key].y }}
+      size={{ width: widgets[key].width, height: widgets[key].height }}
       minWidth="300px"
       minHeight="200px"
       bounds="parent"
