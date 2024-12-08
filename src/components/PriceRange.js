@@ -57,21 +57,28 @@ const PriceRange = ({ symbol = 'BTCUSDT' }) => {
 
     // Set up message handler
     workerRef.current.onmessage = (event) => {
-      const { exchange, price } = event.data;
-      setPrices(prev => ({
-        ...prev,
-        [exchange]: price,
-      }));
+      if (event.data.op === 'price') {
+        const { exchange, price } = event.data.data;
+        setPrices(prev => ({
+          ...prev,
+          [exchange]: price,
+        }));
+      }
     };
 
     // Initialize the worker with the symbol
-    workerRef.current.postMessage({ type: 'INIT', payload: { symbol } });
+    workerRef.current.postMessage({ op: 'INIT', data: { symbol } });
 
     // Clean up the worker when the component unmounts
     return () => {
       workerRef.current.terminate();
     };
   }, [symbol]);
+
+  // Log prices when they change
+  useEffect(() => {
+    console.log('Current prices:', prices);
+  }, [prices]);
 
   const handleError = useCallback((error) => {
     console.error('PriceRange error:', error);
