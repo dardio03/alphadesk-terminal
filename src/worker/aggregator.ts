@@ -5,9 +5,9 @@ import {
   Trade,
   Volumes
 } from '@/types/types'
-import { exchanges, getExchangeById } from './exchanges'
-import { getHms, parseMarket } from './helpers/utils'
-import settings from './settings'
+import { exchanges, getExchangeById } from './exchanges/index.ts'
+import { getHms, parseMarket } from './helpers/utils.ts'
+import settings from './settings.ts'
 
 class Aggregator {
   ctx: Worker
@@ -442,15 +442,31 @@ class Aggregator {
         this.tickers[marketKey].updated = false
         this.tickers[marketKey].volume = 0
         this.tickers[marketKey].volumeDelta = 0
+
+        // Emit price update for each ticker
+        this.emitPriceUpdate(marketKey, this.tickers[marketKey].price)
       }
 
       this.ctx.postMessage({ op: 'tickers', data: updatedTickers })
     }
 
+    // eslint-disable-next-line no-restricted-globals
     this['_tickersInterval'] = self.setTimeout(
       () => this.emitTickers(),
       this.tickersDelay
     )
+  }
+
+  emitPriceUpdate(marketKey: string, price: number) {
+    const [exchange, pair] = marketKey.split(':')
+    this.ctx.postMessage({
+      op: 'price',
+      data: {
+        exchange,
+        pair,
+        price
+      }
+    })
   }
 
   onSubscribed(exchangeId, pair, url) {
@@ -532,6 +548,7 @@ class Aggregator {
       clearTimeout(this._connectionChangeNoticeTimeout)
     }
 
+    // eslint-disable-next-line no-restricted-globals
     this._connectionChangeNoticeTimeout = setTimeout(() => {
       this._connectionChangeNoticeTimeout = null
 
@@ -762,6 +779,7 @@ class Aggregator {
     if (this['_aggrInterval']) {
       return
     }
+    // eslint-disable-next-line no-restricted-globals
     this['_aggrInterval'] = self.setInterval(
       this.emitPendingTrades.bind(this),
       50
@@ -772,6 +790,7 @@ class Aggregator {
     if (this['_statsInterval']) {
       return
     }
+    // eslint-disable-next-line no-restricted-globals
     this['_statsInterval'] = self.setInterval(this.emitStats.bind(this), 500)
   }
 
