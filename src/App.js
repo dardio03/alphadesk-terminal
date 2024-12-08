@@ -7,38 +7,8 @@ import PriceRange from './components/PriceRange';
 import './App.css';
 
 const App = () => {
-  const [widgets, setWidgets] = useState({
-    tradingView: { x: 5, y: 5, width: '49%', height: '59%' },
-    priceRange: { x: '51%', y: 5, width: '48%', height: '59%' },
-    orderBook: { x: 5, y: '61%', width: '49%', height: '38%' },
-    orderBookChanges: { x: '51%', y: '61%', width: '48%', height: '38%' },
-  });
-
-  const updateWidget = (key, newPosition) => {
-    setWidgets(prev => ({ ...prev, [key]: { ...prev[key], ...newPosition } }));
-  };
-
   const renderWidget = (key, content, title, exchangeSelect = false) => (
-    <Rnd
-      default={{
-        x: widgets[key].x,
-        y: widgets[key].y,
-        width: widgets[key].width,
-        height: widgets[key].height,
-      }}
-      minWidth="300px"
-      minHeight="200px"
-      bounds="parent"
-      onDragStop={(e, d) => updateWidget(key, { x: d.x, y: d.y })}
-      onResizeStop={(e, direction, ref, delta, position) => {
-        updateWidget(key, {
-          width: ref.style.width,
-          height: ref.style.height,
-          ...position,
-        });
-      }}
-      className={`widget ${key}-widget`}
-    >
+    <div className={`widget ${key}-widget`}>
       <div className="widget-container">
         <div className="widget-header">
           <span>{title}</span>
@@ -57,12 +27,12 @@ const App = () => {
         </div>
         {content}
       </div>
-    </Rnd>
+    </div>
   );
 
   return (
     <div className="app-container">
-      <div className="scrollable-content">
+      <div className="grid-layout">
         {renderWidget('tradingView', <TradingViewWidget />, 'Trading View')}
         {renderWidget('priceRange', <PriceRange symbol="BTCUSDT" />, 'Price Range')}
         {renderWidget('orderBook', <OrderBook symbol="BTCUSDT" />, 'Order Book', true)}
