@@ -1,8 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import OrderBookSettings from './OrderBookSettings';
-import { useBinanceWebSocket } from '../hooks/useBinanceWebSocket';
-import { useBybitWebSocket } from '../hooks/useBybitWebSocket';
-import { useCoinbaseWebSocket } from '../hooks/useCoinbaseWebSocket';
 import './OrderBook.css';
 
 export const EXCHANGES = {
@@ -21,6 +18,47 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
   const [bids, setBids] = useState([]);
   const [asks, setAsks] = useState([]);
   const [error, setError] = useState(null);
+  const workerRef = useRef(null);
+
+  useEffect(() => {
+    workerRef.current = new Worker(new URL('../worker/worker.ts', import.meta.url));
+
+    workerRef.current.onmessage = (event) => {
+      const { type, payload } = event.data;
+      if (type === 'ORDER_BOOK_UPDATE') {
+        const { exchange, data } = payload;
+        setExchangeData(prev => ({
+          ...prev,
+          [exchange]: data
+        }));
+      } else if (type === 'ERROR') {
+        setError(payload.message);
+      }
+    };
+
+    workerRef.current.postMessage({
+      type: 'INIT',
+      payload: { symbol, exchanges: enabledExchanges }
+    });
+
+    return () => {
+      workerRef.current.terminate();
+    };
+  }, []);
+
+  useEffect(() => {
+    workerRef.current.postMessage({
+      type: 'UPDATE_EXCHANGES',
+      payload: { exchanges: enabledExchanges }
+    });
+  }, [enabledExchanges]);
+
+  useEffect(() => {
+    workerRef.current.postMessage({
+      type: 'UPDATE_SYMBOL',
+      payload: { symbol }
+    });
+  }, [symbol]);
 
   const handleToggleExchange = (exchange) => {
     setEnabledExchanges(prev => {
@@ -31,43 +69,6 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
       }
     });
   };
-
-  const createHandleOrderBookUpdate = useCallback((exchange) => (data) => {
-    setExchangeData(prev => ({
-      ...prev,
-      [exchange]: data
-    }));
-  }, []);
-
-  const handleError = useCallback((errorMessage) => {
-    console.warn(errorMessage); // Log the error but don't set it unless critical
-    if (errorMessage.includes('Failed to connect') || errorMessage.includes('Failed to parse')) {
-      setError(errorMessage);
-    }
-  }, []);
-
-  const handleBinanceData = useCallback((data) => {
-    if (enabledExchanges.includes(EXCHANGES.BINANCE)) {
-      createHandleOrderBookUpdate(EXCHANGES.BINANCE)(data);
-    }
-  }, [enabledExchanges, createHandleOrderBookUpdate]);
-
-  const handleBybitData = useCallback((data) => {
-    if (enabledExchanges.includes(EXCHANGES.BYBIT)) {
-      createHandleOrderBookUpdate(EXCHANGES.BYBIT)(data);
-    }
-  }, [enabledExchanges, createHandleOrderBookUpdate]);
-
-  const handleCoinbaseData = useCallback((data) => {
-    if (enabledExchanges.includes(EXCHANGES.COINBASE)) {
-      createHandleOrderBookUpdate(EXCHANGES.COINBASE)(data);
-    }
-  }, [enabledExchanges, createHandleOrderBookUpdate]);
-
-  // Use WebSocket hooks for each exchange
-  useBinanceWebSocket(symbol, handleBinanceData, handleError);
-  useBybitWebSocket(symbol, handleBybitData, handleError);
-  useCoinbaseWebSocket(symbol, handleCoinbaseData, handleError);
 
   // Aggregate order book data from all enabled exchanges
   useEffect(() => {
