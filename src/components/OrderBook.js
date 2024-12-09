@@ -21,10 +21,16 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
   const workerRef = useRef(null);
 
   useEffect(() => {
-    workerRef.current = new Worker(new URL('../worker/worker.ts', import.meta.url));
+    try {
+      workerRef.current = new Worker(new URL('../worker/worker.ts', import.meta.url));
+    } catch (error) {
+      console.error('Failed to initialize web worker:', error);
+      setError('Failed to initialize web worker');
+    }
 
     workerRef.current.onmessage = (event) => {
       const { type, payload } = event.data;
+      console.log('Received message from worker:', type, payload);
       if (type === 'ORDER_BOOK_UPDATE') {
         const { exchange, data } = payload;
         setExchangeData(prev => ({
