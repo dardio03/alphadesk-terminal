@@ -18,18 +18,18 @@ const EXCHANGE_ICONS = {
 };
 
 const PriceRange = ({ symbol = 'BTCUSDT' }) => {
-  const binancePrice = useBinancePrice ? useBinancePrice(symbol) : null;
+  const binancePrice = useBinancePrice(symbol);
   const [setPrices] = useState({});
   const bybitPrice = useBybitPrice(symbol);
   const coinbasePrice = useCoinbasePrice(symbol);
 
-  const prices = {
+  const prices = useMemo(() => ({
     [EXCHANGES.BINANCE]: binancePrice,
     [EXCHANGES.BYBIT]: bybitPrice,
     [EXCHANGES.COINBASE]: coinbasePrice,
-  };
+  }), [binancePrice, bybitPrice, coinbasePrice]);
 
-  const error = null; // Handle errors from individual hooks if needed
+  
 
   const [priceRange, setPriceRange] = useState({
     min: 0,
@@ -90,9 +90,7 @@ const PriceRange = ({ symbol = 'BTCUSDT' }) => {
     console.log('Current prices:', prices);
   }, [prices]);
 
-  const handleError = useCallback((error) => {
-    console.error('PriceRange error:', error);
-  }, []);
+  
 
   const formatPrice = (price) => {
     return price?.toFixed(2) || '-';

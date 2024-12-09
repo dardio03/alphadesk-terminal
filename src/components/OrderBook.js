@@ -15,10 +15,11 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
   const [setExchangeData] = useState({});
   const [bids, setBids] = useState([]);
   const [asks, setAsks] = useState([]);
-  const [localError, setError] = useState(null);
+  const [, setError] = useState(null);
   const workerRef = useRef(null);
 
   useEffect(() => {
+    if (!workerRef.current) return;
     try {
       workerRef.current = new Worker(new URL('../worker/worker.ts', import.meta.url));
     } catch (error) {
