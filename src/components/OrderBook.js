@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import useOrderBookData from '../hooks/useOrderBookData';
 import OrderBookSettings from './OrderBookSettings';
 import './OrderBook.css';
 
@@ -10,11 +11,7 @@ export const EXCHANGES = {
 
 const OrderBook = ({ symbol = 'BTCUSDT' }) => {
   const [enabledExchanges, setEnabledExchanges] = useState([EXCHANGES.BINANCE]);
-  const [exchangeData, setExchangeData] = useState({
-    [EXCHANGES.BINANCE]: { bids: [], asks: [] },
-    [EXCHANGES.BYBIT]: { bids: [], asks: [] },
-    [EXCHANGES.COINBASE]: { bids: [], asks: [] }
-  });
+  const { exchangeData, error } = useOrderBookData(symbol, enabledExchanges);
   const [bids, setBids] = useState([]);
   const [asks, setAsks] = useState([]);
   const [error, setError] = useState(null);
