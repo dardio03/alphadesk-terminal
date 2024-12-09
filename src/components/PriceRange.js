@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import usePriceRangeData from '../hooks/usePriceRangeData';
 import { EXCHANGES } from './OrderBook';
 import './PriceRange.css';
 
@@ -15,11 +16,7 @@ const EXCHANGE_ICONS = {
 };
 
 const PriceRange = ({ symbol = 'BTCUSDT' }) => {
-  const [prices, setPrices] = useState({
-    [EXCHANGES.BINANCE]: null,
-    [EXCHANGES.BYBIT]: null,
-    [EXCHANGES.COINBASE]: null,
-  });
+  const { prices, error } = usePriceRangeData(symbol);
 
   const [priceRange, setPriceRange] = useState({
     min: 0,
