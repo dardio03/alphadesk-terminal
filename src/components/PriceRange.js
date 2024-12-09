@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import usePriceRangeData from '../hooks/usePriceRangeData';
+import useBinancePrice from '../hooks/useBinancePrice';
+import useBybitPrice from '../hooks/useBybitPrice';
+import useCoinbasePrice from '../hooks/useCoinbasePrice';
 import { EXCHANGES } from './OrderBook';
 import './PriceRange.css';
 
@@ -16,7 +18,17 @@ const EXCHANGE_ICONS = {
 };
 
 const PriceRange = ({ symbol = 'BTCUSDT' }) => {
-  const { prices, error } = usePriceRangeData(symbol);
+  const binancePrice = useBinancePrice(symbol);
+  const bybitPrice = useBybitPrice(symbol);
+  const coinbasePrice = useCoinbasePrice(symbol);
+
+  const prices = {
+    [EXCHANGES.BINANCE]: binancePrice,
+    [EXCHANGES.BYBIT]: bybitPrice,
+    [EXCHANGES.COINBASE]: coinbasePrice,
+  };
+
+  const error = null; // Handle errors from individual hooks if needed
 
   const [priceRange, setPriceRange] = useState({
     min: 0,

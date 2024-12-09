@@ -14,7 +14,7 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
   const { exchangeData, error } = useOrderBookData(symbol, enabledExchanges);
   const [bids, setBids] = useState([]);
   const [asks, setAsks] = useState([]);
-  const [error, setError] = useState(null);
+  const [localError, setError] = useState(null);
   const workerRef = useRef(null);
 
   useEffect(() => {
