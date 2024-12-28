@@ -5,7 +5,8 @@ import { WebSocketHookProps, OrderBookData, BinanceWebSocketMessage } from '../t
 const BINANCE_WS_URL = 'wss://stream.binance.com/ws';
 
 export const useBinanceWebSocket = ({ symbol, onData, onError }: WebSocketHookProps) => {
-  const handleMessage = useCallback((message: BinanceWebSocketMessage) => {
+  const handleMessage = useCallback((message: WebSocketMessage) => {
+    const binanceMessage = message as BinanceWebSocketMessage;
     try {
       if (message.bids && message.asks) {
         const formattedData: OrderBookData = {

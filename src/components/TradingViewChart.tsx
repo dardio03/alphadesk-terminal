@@ -45,12 +45,12 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
       crosshair: {
         mode: 1,
         vertLine: {
-          width: 1,
+          width: 1 as LineWidth,
           color: theme === 'dark' ? '#758696' : '#96a2b4',
           style: 2,
         },
         horzLine: {
-          width: 1,
+          width: 1 as LineWidth,
           color: theme === 'dark' ? '#758696' : '#96a2b4',
           style: 2,
         },

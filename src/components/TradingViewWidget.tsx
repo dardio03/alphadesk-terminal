@@ -16,7 +16,6 @@ interface TradingViewConfig {
   style?: '1' | '2' | '3' | '4';
   locale?: string;
   toolbar_bg?: string;
-  enable_publishing?: boolean;
   allow_symbol_change?: boolean;
   container_id: string;
   width?: string | number;
@@ -32,7 +31,6 @@ interface TradingViewConfig {
   save_image?: boolean;
   enable_publishing?: boolean;
   hide_top_toolbar?: boolean;
-  withdateranges?: boolean;
   hide_volume?: boolean;
   [key: string]: any;
 }
