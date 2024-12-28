@@ -4,6 +4,7 @@ import useBybitOrderBook from '../hooks/useBybitOrderBook';
 import useCoinbaseOrderBook from '../hooks/useCoinbaseOrderBook';
 import { OrderBookProps, OrderBookEntry } from '../types/exchange';
 import { formatPrice, formatQuantity, calculateSpreadPercentage } from '../utils/formatPrice';
+import WidgetHeader from './WidgetHeader';
 import './OrderBook.css';
 
 export const EXCHANGES = {
@@ -118,25 +119,31 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
     });
   };
 
+  const renderExchangeSettings = () => (
+    <div className="exchange-toggles">
+      {Object.values(EXCHANGES).map(exchange => (
+        <label key={exchange} className="exchange-toggle">
+          <input
+            type="checkbox"
+            checked={enabledExchanges.includes(exchange)}
+            onChange={() => handleToggleExchange(exchange)}
+          />
+          <span>{exchange}</span>
+          <span className={`connection-status ${getConnectionStatus(exchange)}`}>
+            {getConnectionStatus(exchange)}
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+
   return (
     <div className={`orderbook ${className}`}>
       {error && <div className="orderbook-error">{error}</div>}
-      <div className="exchange-toggles">
-        {Object.values(EXCHANGES).map(exchange => (
-          <label key={exchange} className="exchange-toggle">
-            <input
-              type="checkbox"
-              checked={enabledExchanges.includes(exchange)}
-              onChange={() => handleToggleExchange(exchange)}
-            />
-            <span>{exchange}</span>
-            <span className={`connection-status ${getConnectionStatus(exchange)}`}>
-              {getConnectionStatus(exchange)}
-            </span>
-          </label>
-        ))}
-      </div>
-      
+      <WidgetHeader
+        title={`Order Book - ${symbol}`}
+        settingsContent={renderExchangeSettings()}
+      />
       <div className="orderbook-content">
         <div className="orderbook-header">
           <div className="column-headers">

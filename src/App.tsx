@@ -4,6 +4,7 @@ import OrderBook from './components/OrderBook';
 import LivePrice from './components/LivePrice';
 import PriceRange from './components/PriceRange';
 import TradingViewWidget from './components/TradingViewWidget';
+import WidgetHeader from './components/WidgetHeader';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import './App.css';
@@ -83,28 +84,27 @@ const App: React.FC = () => {
         draggableHandle=".widget-header"
       >
         <div key="orderbook" className="widget">
-          <div className="widget-header">Order Book</div>
           <div className="widget-content">
             <OrderBook symbol={symbol} />
           </div>
         </div>
 
         <div key="liveprice" className="widget">
-          <div className="widget-header">Live Price</div>
+          <WidgetHeader title="Live Price" />
           <div className="widget-content">
             <LivePrice symbol={symbol} />
           </div>
         </div>
 
         <div key="pricerange" className="widget">
-          <div className="widget-header">Price Range</div>
+          <WidgetHeader title="Price Range" />
           <div className="widget-content">
             <PriceRange symbol={symbol} />
           </div>
         </div>
 
         <div key="chart" className="widget">
-          <div className="widget-header">Chart</div>
+          <WidgetHeader title="Chart" />
           <div className="widget-content">
             <TradingViewWidget
               symbol={symbol}
