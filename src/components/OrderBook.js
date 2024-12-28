@@ -11,35 +11,37 @@ export const EXCHANGES = {
 
 const OrderBook = ({ symbol = 'BTCUSDT' }) => {
   const [enabledExchanges, setEnabledExchanges] = useState([EXCHANGES.BINANCE]);
-  const { exchangeData, error } = useOrderBookData(symbol, enabledExchanges);
-  const [setExchangeData] = useState({});
+  const { error } = useOrderBookData(symbol, enabledExchanges);
+  const [exchangeData, setExchangeData] = useState({});
   const [bids, setBids] = useState([]);
   const [asks, setAsks] = useState([]);
   const [, setError] = useState(null);
   const workerRef = useRef(null);
 
   useEffect(() => {
-    if (!workerRef.current) return;
-    try {
-      workerRef.current = new Worker(new URL('../worker/worker.ts', import.meta.url));
-    } catch (error) {
-      console.error('Failed to initialize web worker:', error);
-      setError('Failed to initialize web worker');
-    }
-
-    workerRef.current.onmessage = (event) => {
-      const { type, payload } = event.data;
-      console.log('Received message from worker:', type, payload);
-      if (type === 'ORDER_BOOK_UPDATE') {
-        const { exchange, data } = payload;
-        setExchangeData(prev => ({
-          ...prev,
-          [exchange]: data
-        }));
-      } else if (type === 'ERROR') {
-        setError(payload.message);
+    if (!workerRef.current) {
+      try {
+        workerRef.current = new Worker(new URL('../worker/worker.ts', import.meta.url));
+      } catch (error) {
+        console.error('Failed to initialize web worker:', error);
+        setError('Failed to initialize web worker');
+        return;
       }
-    };
+
+      workerRef.current.onmessage = (event) => {
+        const { type, payload } = event.data;
+        console.log('Received message from worker:', type, payload);
+        if (type === 'ORDER_BOOK_UPDATE') {
+          const { exchange, data } = payload;
+          setExchangeData(prev => ({
+            ...prev,
+            [exchange]: data
+          }));
+        } else if (type === 'ERROR') {
+          setError(payload.message);
+        }
+      };
+    }
 
     workerRef.current.postMessage({
       type: 'INIT',
@@ -47,9 +49,11 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
     });
 
     return () => {
-      workerRef.current.terminate();
+      if (workerRef.current) {
+        workerRef.current.terminate();
+      }
     };
-  }, []);
+  }, [symbol, enabledExchanges, setExchangeData, setError]);
 
   useEffect(() => {
     workerRef.current.postMessage({

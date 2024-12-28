@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-globals */
 const worker = self as unknown as Worker;
 
 interface OrderBookData {

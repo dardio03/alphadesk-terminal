@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useBinancePrice from '../hooks/useBinancePrice';
 import useBybitPrice from '../hooks/useBybitPrice';
 import useCoinbasePrice from '../hooks/useCoinbasePrice';
@@ -19,15 +19,17 @@ const EXCHANGE_ICONS = {
 
 const PriceRange = ({ symbol = 'BTCUSDT' }) => {
   const binancePrice = useBinancePrice(symbol);
-  const [setPrices] = useState({});
+  const [prices, setPrices] = useState({});
   const bybitPrice = useBybitPrice(symbol);
   const coinbasePrice = useCoinbasePrice(symbol);
 
-  const prices = useMemo(() => ({
-    [EXCHANGES.BINANCE]: binancePrice,
-    [EXCHANGES.BYBIT]: bybitPrice,
-    [EXCHANGES.COINBASE]: coinbasePrice,
-  }), [binancePrice, bybitPrice, coinbasePrice]);
+  useEffect(() => {
+    setPrices({
+      [EXCHANGES.BINANCE]: binancePrice,
+      [EXCHANGES.BYBIT]: bybitPrice,
+      [EXCHANGES.COINBASE]: coinbasePrice,
+    });
+  }, [binancePrice, bybitPrice, coinbasePrice]);
 
   
 
