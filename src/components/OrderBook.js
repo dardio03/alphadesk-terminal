@@ -12,7 +12,11 @@ export const EXCHANGES = {
 const OrderBook = ({ symbol = 'BTCUSDT' }) => {
   const [enabledExchanges, setEnabledExchanges] = useState([EXCHANGES.BINANCE]);
   const { error } = useOrderBookData(symbol, enabledExchanges);
-  const [exchangeData, setExchangeData] = useState({});
+  const [exchangeData, setExchangeData] = useState({
+    [EXCHANGES.BINANCE]: { bids: [], asks: [] },
+    [EXCHANGES.BYBIT]: { bids: [], asks: [] },
+    [EXCHANGES.COINBASE]: { bids: [], asks: [] }
+  });
   const [bids, setBids] = useState([]);
   const [asks, setAsks] = useState([]);
   const [, setError] = useState(null);
@@ -81,46 +85,64 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
 
   // Aggregate order book data from all enabled exchanges
   useEffect(() => {
-    const allBids = [];
-    const allAsks = [];
+    try {
+      const allBids = [];
+      const allAsks = [];
 
-    enabledExchanges.forEach(exchange => {
-      const { bids: exchangeBids, asks: exchangeAsks } = exchangeData[exchange];
-      allBids.push(...exchangeBids.map(bid => ({ ...bid, exchange })));
-      allAsks.push(...exchangeAsks.map(ask => ({ ...ask, exchange })));
-    });
-
-    // Sort and aggregate orders at the same price level
-    const aggregatedBids = allBids
-      .reduce((acc, bid) => {
-        const existingBid = acc.find(b => b.price === bid.price);
-        if (existingBid) {
-          existingBid.quantity += bid.quantity;
-          existingBid.exchanges = [...existingBid.exchanges, bid.exchange];
-        } else {
-          acc.push({ ...bid, exchanges: [bid.exchange] });
+      enabledExchanges.forEach(exchange => {
+        const exchangeOrderBook = exchangeData[exchange] || { bids: [], asks: [] };
+        const { bids: exchangeBids = [], asks: exchangeAsks = [] } = exchangeOrderBook;
+        
+        if (Array.isArray(exchangeBids)) {
+          allBids.push(...exchangeBids.map(bid => ({ ...bid, exchange })));
         }
-        return acc;
-      }, [])
-      .sort((a, b) => b.price - a.price)
-      .slice(0, 50);
-
-    const aggregatedAsks = allAsks
-      .reduce((acc, ask) => {
-        const existingAsk = acc.find(a => a.price === ask.price);
-        if (existingAsk) {
-          existingAsk.quantity += ask.quantity;
-          existingAsk.exchanges = [...existingAsk.exchanges, ask.exchange];
-        } else {
-          acc.push({ ...ask, exchanges: [ask.exchange] });
+        if (Array.isArray(exchangeAsks)) {
+          allAsks.push(...exchangeAsks.map(ask => ({ ...ask, exchange })));
         }
-        return acc;
-      }, [])
-      .sort((a, b) => a.price - b.price)
-      .slice(0, 50);
+      });
 
-    setBids(aggregatedBids);
-    setAsks(aggregatedAsks);
+      // Sort and aggregate orders at the same price level
+      const aggregatedBids = allBids
+        .reduce((acc, bid) => {
+          if (!bid || typeof bid.price === 'undefined' || typeof bid.quantity === 'undefined') {
+            return acc;
+          }
+          const existingBid = acc.find(b => b.price === bid.price);
+          if (existingBid) {
+            existingBid.quantity += bid.quantity;
+            existingBid.exchanges = [...existingBid.exchanges, bid.exchange];
+          } else {
+            acc.push({ ...bid, exchanges: [bid.exchange] });
+          }
+          return acc;
+        }, [])
+        .sort((a, b) => b.price - a.price)
+        .slice(0, 50);
+
+      const aggregatedAsks = allAsks
+        .reduce((acc, ask) => {
+          if (!ask || typeof ask.price === 'undefined' || typeof ask.quantity === 'undefined') {
+            return acc;
+          }
+          const existingAsk = acc.find(a => a.price === ask.price);
+          if (existingAsk) {
+            existingAsk.quantity += ask.quantity;
+            existingAsk.exchanges = [...existingAsk.exchanges, ask.exchange];
+          } else {
+            acc.push({ ...ask, exchanges: [ask.exchange] });
+          }
+          return acc;
+        }, [])
+        .sort((a, b) => a.price - b.price)
+        .slice(0, 50);
+
+      setBids(aggregatedBids);
+      setAsks(aggregatedAsks);
+    } catch (error) {
+      console.error('Error aggregating order book data:', error);
+      setBids([]);
+      setAsks([]);
+    }
   }, [enabledExchanges, exchangeData]);
 
   const formatNumber = (num) => {
