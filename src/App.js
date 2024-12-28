@@ -72,13 +72,31 @@ const WidgetContent = styled(Box)({
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [layouts, setLayouts] = useState({
+  const defaultLayouts = {
     lg: [
-      { i: 'chart', x: 0, y: 0, w: 8, h: 12 },
-      { i: 'price', x: 8, y: 0, w: 4, h: 6 },
-      { i: 'orderbook', x: 8, y: 6, w: 4, h: 6 },
-      { i: 'changes', x: 0, y: 12, w: 12, h: 6 }
+      { i: 'chart', x: 0, y: 0, w: 8, h: 12, minW: 4, minH: 8 },
+      { i: 'price', x: 8, y: 0, w: 4, h: 6, minW: 3, minH: 4 },
+      { i: 'orderbook', x: 8, y: 6, w: 4, h: 6, minW: 3, minH: 4 },
+      { i: 'changes', x: 0, y: 12, w: 12, h: 6, minW: 6, minH: 4 }
+    ],
+    md: [
+      { i: 'chart', x: 0, y: 0, w: 6, h: 12, minW: 4, minH: 8 },
+      { i: 'price', x: 6, y: 0, w: 4, h: 6, minW: 3, minH: 4 },
+      { i: 'orderbook', x: 6, y: 6, w: 4, h: 6, minW: 3, minH: 4 },
+      { i: 'changes', x: 0, y: 12, w: 10, h: 6, minW: 6, minH: 4 }
+    ],
+    sm: [
+      { i: 'chart', x: 0, y: 0, w: 6, h: 10, minW: 3, minH: 6 },
+      { i: 'price', x: 0, y: 10, w: 6, h: 6, minW: 3, minH: 4 },
+      { i: 'orderbook', x: 0, y: 16, w: 6, h: 6, minW: 3, minH: 4 },
+      { i: 'changes', x: 0, y: 22, w: 6, h: 6, minW: 3, minH: 4 }
     ]
+  };
+
+  // Try to load saved layout from localStorage, fallback to default if none exists
+  const [layouts, setLayouts] = useState(() => {
+    const savedLayouts = localStorage.getItem('tradingLayoutState');
+    return savedLayouts ? JSON.parse(savedLayouts) : defaultLayouts;
   });
 
   useEffect(() => {
@@ -118,11 +136,22 @@ const App = () => {
         <ResponsiveGridLayout
           className="layout"
           layouts={layouts}
-          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+          breakpoints={{ lg: 1200, md: 996, sm: 768 }}
+          cols={{ lg: 12, md: 10, sm: 6 }}
           rowHeight={30}
           onLayoutChange={onLayoutChange}
           margin={[16, 16]}
+          containerPadding={[16, 16]}
+          useCSSTransforms={true}
+          preventCollision={true}
+          compactType="vertical"
+          isBounded={true}
+          draggableHandle=".dragHandle"
+          resizeHandle={
+            <div className="custom-resize-handle">
+              <div className="resize-handle-inner" />
+            </div>
+          }
         >
           <Widget key="chart">
             <WidgetHeader className="dragHandle">

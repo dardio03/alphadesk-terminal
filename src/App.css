@@ -50,7 +50,7 @@ body {
   user-select: none;
 }
 
-.react-grid-item > .react-resizable-handle {
+.custom-resize-handle {
   position: absolute;
   width: 20px;
   height: 20px;
@@ -59,21 +59,57 @@ body {
   cursor: se-resize;
   opacity: 0;
   transition: opacity 200ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.react-grid-item:hover > .react-resizable-handle {
+.react-grid-item:hover .custom-resize-handle {
   opacity: 1;
 }
 
-.react-grid-item > .react-resizable-handle::after {
-  content: "";
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  width: 5px;
-  height: 5px;
+.resize-handle-inner {
+  width: 8px;
+  height: 8px;
   border-right: 2px solid rgba(255, 255, 255, 0.4);
   border-bottom: 2px solid rgba(255, 255, 255, 0.4);
+  transform: rotate(45deg);
+  margin: -4px;
+}
+
+/* Highlight widget when dragging */
+.react-grid-item.react-draggable-dragging {
+  z-index: 3;
+  background: rgba(41, 98, 255, 0.1);
+  border: 1px solid #2962ff;
+}
+
+/* Highlight widget when resizing */
+.react-grid-item.resizing {
+  z-index: 3;
+  background: rgba(41, 98, 255, 0.1);
+  border: 1px solid #2962ff;
+}
+
+/* Add transition for smooth resizing */
+.react-grid-item.cssTransforms {
+  transition-property: transform;
+  transition-timing-function: ease;
+}
+
+/* Add gap between widgets */
+.react-grid-layout {
+  margin: -8px;
+}
+
+.react-grid-item {
+  padding: 8px;
+}
+
+/* Make sure content fits in widget */
+.react-grid-item > * {
+  height: 100%;
+  width: 100%;
 }
 
 /* Custom scrollbar */
