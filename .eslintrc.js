@@ -1,7 +1,7 @@
 module.exports = {
   // ... other config ...
   rules: {
-    'no-restricted-globals': ['error', ...but exclude 'self' for worker files],
+    'no-restricted-globals': ['error'],
   },
   overrides: [
     {
