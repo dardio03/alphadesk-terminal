@@ -71,3 +71,41 @@ export interface LivePriceProps {
   symbol: string;
   exchange?: string;
 }
+
+export interface TradingViewChartData {
+  time: number;
+  value: number;
+}
+
+export interface ChartOptions {
+  width?: number;
+  height?: number;
+  theme?: 'light' | 'dark';
+  autosize?: boolean;
+  onCrosshairMove?: (price: number, time: number) => void;
+}
+
+export interface ChartSeriesOptions {
+  color?: string;
+  lineWidth?: number;
+  priceFormat?: {
+    type: 'price' | 'volume' | 'percent';
+    precision?: number;
+    minMove?: number;
+  };
+}
+
+export interface PriceData {
+  price: number;
+  timestamp: number;
+  volume?: number;
+  change?: number;
+}
+
+export interface OrderBookUpdate {
+  type: 'bid' | 'ask';
+  price: number;
+  quantity: number;
+  timestamp: number;
+  exchange: string;
+}
