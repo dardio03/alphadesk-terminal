@@ -49,7 +49,7 @@ const processOrderBookData = (data: any, exchange: string) => {
     worker.postMessage({
       type: 'ERROR',
       payload: {
-        message: `Error processing ${exchange} order book data: ${error.message}`
+        message: `Error processing ${exchange} order book data: ${error instanceof Error ? error.message : String(error)}`
       }
     });
   }
@@ -86,7 +86,7 @@ worker.onmessage = (event) => {
     worker.postMessage({
       type: 'ERROR',
       payload: {
-        message: `Worker error: ${error.message}`
+        message: `Worker error: ${error instanceof Error ? error.message : String(error)}`
       }
     });
   }

@@ -8,7 +8,7 @@ import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import './App.css';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const ResponsiveGridLayout = WidthProvider(Responsive) as React.ComponentType<ResponsiveProps>;
 
 interface LayoutItem {
   i: string;

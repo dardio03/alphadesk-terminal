@@ -61,8 +61,8 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
     }
 
     if (enabledExchanges.includes(EXCHANGES.BYBIT)) {
-      allBids.push(...bybit.orderBook.bids.map(bid => ({ ...bid, exchange: EXCHANGES.BYBIT })));
-      allAsks.push(...bybit.orderBook.asks.map(ask => ({ ...ask, exchange: EXCHANGES.BYBIT })));
+      allBids.push(...bybit.orderBook.bids.map((bid: OrderBookEntry) => ({ ...bid, exchange: EXCHANGES.BYBIT })));
+      allAsks.push(...bybit.orderBook.asks.map((ask: OrderBookEntry) => ({ ...ask, exchange: EXCHANGES.BYBIT })));
     }
 
     if (enabledExchanges.includes(EXCHANGES.COINBASE)) {
