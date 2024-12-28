@@ -19,6 +19,19 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
   const bybit = useBybitOrderBook(symbol);
   const coinbase = useCoinbaseOrderBook(symbol);
 
+  const getConnectionStatus = (exchange) => {
+    switch (exchange) {
+      case EXCHANGES.BINANCE:
+        return binance.connectionState || 'unknown';
+      case EXCHANGES.COINBASE:
+        return coinbase.connectionState || 'unknown';
+      case EXCHANGES.BYBIT:
+        return bybit.connectionState || 'unknown';
+      default:
+        return 'unknown';
+    }
+  };
+
   // Set error if any exchange has an error
   useEffect(() => {
     const errors = [binance.error, bybit.error, coinbase.error].filter(Boolean);
@@ -116,6 +129,9 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
               onChange={() => handleToggleExchange(exchange)}
             />
             <span>{exchange}</span>
+            <span className={`connection-status ${getConnectionStatus(exchange)}`}>
+              {getConnectionStatus(exchange)}
+            </span>
           </label>
         ))}
       </div>
