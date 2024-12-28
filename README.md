@@ -1,70 +1,146 @@
-# Getting Started with Create React App
+# AlphaDesk Terminal
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A professional-grade cryptocurrency trading terminal built with React and TypeScript, featuring real-time order book data, live price tracking, and advanced charting capabilities.
+
+## Features
+
+- **Real-time Order Book**: Multi-exchange order book aggregation with live updates
+- **Live Price Tracking**: Real-time price updates from multiple exchanges
+- **Advanced Charting**: TradingView chart integration with customizable indicators
+- **Price Range Analysis**: Visual representation of price ranges and market depth
+- **Responsive Layout**: Draggable and resizable widgets for customized workspace
+- **Multi-Exchange Support**: 
+  - Binance
+  - Coinbase
+  - Bybit (coming soon)
+
+## Technology Stack
+
+- **Frontend**:
+  - React 18
+  - TypeScript 5
+  - React Grid Layout
+  - TradingView Lightweight Charts
+  - WebSocket for real-time data
+
+- **Development**:
+  - ESLint with TypeScript support
+  - Jest for testing
+  - React Testing Library
+  - Prettier for code formatting
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18 or higher
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/alphadesk-terminal.git
+   cd alphadesk-terminal
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+3. Start the development server:
+   ```bash
+   npm start
+   # or
+   yarn start
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+
+### Build for Production
+
+```bash
+npm run build
+# or
+yarn build
+```
+
+## Project Structure
+
+```
+src/
+├── components/          # React components
+│   ├── OrderBook/      # Order book related components
+│   ├── LivePrice/      # Price tracking components
+│   └── Charts/         # Chart components
+├── hooks/              # Custom React hooks
+│   ├── useWebSocket    # WebSocket connection hooks
+│   └── useOrderBook    # Order book data hooks
+├── types/              # TypeScript type definitions
+├── utils/              # Utility functions
+├── services/           # API and service integrations
+└── assets/            # Static assets
+```
 
 ## Available Scripts
 
-In the project directory, you can run:
+- `npm start` - Runs the app in development mode
+- `npm test` - Launches the test runner
+- `npm run build` - Builds the app for production
+- `npm run lint` - Runs ESLint
+- `npm run format` - Formats code with Prettier
 
-### `npm start`
+## WebSocket Connections
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+The terminal maintains WebSocket connections to multiple exchanges for real-time data:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- Binance: `wss://stream.binance.com/ws`
+- Coinbase: `wss://ws-feed.exchange.coinbase.com`
 
-### `npm test`
+Each connection includes automatic reconnection with exponential backoff and proper error handling.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Type Safety
 
-### `npm run build`
+The project uses TypeScript with strict type checking enabled. Key type definitions include:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- Exchange interfaces
+- WebSocket message types
+- Component props
+- API responses
+- Layout configurations
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Testing
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Tests are written using Jest and React Testing Library. Run the test suite:
 
-### `npm run eject`
+```bash
+npm test
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Key test areas:
+- Component rendering
+- WebSocket connection handling
+- Order book data processing
+- Price calculations
+- Layout management
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Contributing
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## License
 
-## Learn More
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Acknowledgments
 
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- TradingView for charting library
+- React Grid Layout for widget management
+- Cryptocurrency exchanges for their WebSocket APIs
