@@ -1,144 +1,142 @@
 .orderbook {
-  width: 100%;
-  max-width: 600px;
-  background-color: #1a1a1a;
-  color: #fff;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   height: 100%;
-  max-height: 800px;
-}
-
-.orderbook-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
+  background-color: var(--widget-bg);
 }
 
-.orderbook-error {
-  width: 100%;
-  background-color: #ff3b30;
-  color: #fff;
-  padding: 15px;
-  text-align: center;
-  font-weight: bold;
+.exchange-toggles {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.exchange-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.exchange-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.exchange-toggle input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.exchange-toggle span {
+  user-select: none;
 }
 
 .orderbook-header {
-  padding: 12px 8px;
-  border-bottom: 1px solid #333;
-  background-color: #1a1a1a;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
 .column-headers {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px;
-  text-align: right;
-  font-size: 0.9em;
-  color: #888;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  padding-right: 8px;
 }
 
 .orderbook-body {
   flex: 1;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #333 #1a1a1a;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.orderbook-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.orderbook-body::-webkit-scrollbar-track {
-  background: #1a1a1a;
-}
-
-.orderbook-body::-webkit-scrollbar-thumb {
-  background-color: #333;
-  border-radius: 3px;
-}
-
 .orderbook-section {
-  flex: 0 0 auto;
-}
-
-.asks-section {
-  display: flex;
-  flex-direction: column-reverse;
+  flex: 1;
+  overflow: auto;
+  position: relative;
 }
 
 .order-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px;
-  padding: 6px 8px;
-  text-align: right;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
   position: relative;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s;
 }
 
 .order-row:hover {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-.price.sell {
-  color: #ff3b30;
-}
-
-.price.buy {
-  color: #34c759;
-}
-
-.spread {
-  text-align: center;
-  padding: 10px;
-  background-color: rgba(255, 255, 255, 0.05);
-  margin: 8px 0;
-  font-size: 0.9em;
-  font-weight: bold;
-}
-
-.amount, .total, .price {
-  padding: 0 8px;
-  position: relative;
-  z-index: 1;
-}
-
 .depth-visualization {
   position: absolute;
   top: 0;
   right: 0;
-  bottom: 0;
+  height: 100%;
+  background-color: rgba(0, 200, 83, 0.1);
   z-index: 0;
+  pointer-events: none;
   transition: width 0.3s ease;
-  opacity: 0.1;
 }
 
-.ask .depth-visualization {
-  background-color: #ff3b30;
+.asks-section .depth-visualization {
+  background-color: rgba(255, 61, 113, 0.1);
 }
 
-.bid .depth-visualization {
-  background-color: #34c759;
+.amount, .total, .price, .exchanges {
+  position: relative;
+  z-index: 1;
+  text-align: right;
 }
 
-@media (max-width: 768px) {
-  .orderbook {
-    font-size: 0.9em;
-  }
+.exchanges {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: lowercase;
+  opacity: 0.7;
+}
 
-  .orderbook-content {
-    padding: 10px;
-  }
+.price.buy {
+  color: var(--success-color);
+  font-weight: 500;
+}
+
+.price.sell {
+  color: var(--danger-color);
+  font-weight: 500;
+}
+
+.spread {
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.orderbook-error {
+  padding: 8px;
+  margin: 8px;
+  color: var(--danger-color);
+  text-align: center;
+  font-size: 12px;
+  background-color: rgba(255, 61, 113, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 61, 113, 0.2);
 }

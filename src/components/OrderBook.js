@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import useOrderBookData from '../hooks/useOrderBookData';
-import OrderBookSettings from './OrderBookSettings';
+import React, { useState, useEffect, useMemo } from 'react';
+import useBinanceOrderBook from '../hooks/useBinanceOrderBook';
+import useBybitOrderBook from '../hooks/useBybitOrderBook';
+import useCoinbaseOrderBook from '../hooks/useCoinbaseOrderBook';
 import './OrderBook.css';
 
 export const EXCHANGES = {
@@ -11,67 +12,80 @@ export const EXCHANGES = {
 
 const OrderBook = ({ symbol = 'BTCUSDT' }) => {
   const [enabledExchanges, setEnabledExchanges] = useState([EXCHANGES.BINANCE]);
-  const { error } = useOrderBookData(symbol, enabledExchanges);
-  const [exchangeData, setExchangeData] = useState({
-    [EXCHANGES.BINANCE]: { bids: [], asks: [] },
-    [EXCHANGES.BYBIT]: { bids: [], asks: [] },
-    [EXCHANGES.COINBASE]: { bids: [], asks: [] }
-  });
-  const [bids, setBids] = useState([]);
-  const [asks, setAsks] = useState([]);
-  const [, setError] = useState(null);
-  const workerRef = useRef(null);
+  const [error, setError] = useState(null);
 
+  // Use hooks for each exchange
+  const binance = useBinanceOrderBook(symbol);
+  const bybit = useBybitOrderBook(symbol);
+  const coinbase = useCoinbaseOrderBook(symbol);
+
+  // Set error if any exchange has an error
   useEffect(() => {
-    if (!workerRef.current) {
-      try {
-        workerRef.current = new Worker(new URL('../worker/worker.ts', import.meta.url));
-      } catch (error) {
-        console.error('Failed to initialize web worker:', error);
-        setError('Failed to initialize web worker');
-        return;
-      }
+    const errors = [binance.error, bybit.error, coinbase.error].filter(Boolean);
+    if (errors.length > 0) {
+      setError(errors[0]);
+    } else {
+      setError(null);
+    }
+  }, [binance.error, bybit.error, coinbase.error]);
 
-      workerRef.current.onmessage = (event) => {
-        const { type, payload } = event.data;
-        console.log('Received message from worker:', type, payload);
-        if (type === 'ORDER_BOOK_UPDATE') {
-          const { exchange, data } = payload;
-          setExchangeData(prev => ({
-            ...prev,
-            [exchange]: data
-          }));
-        } else if (type === 'ERROR') {
-          setError(payload.message);
-        }
-      };
+  // Combine and process order book data
+  const { bids, asks } = useMemo(() => {
+    const allBids = [];
+    const allAsks = [];
+
+    if (enabledExchanges.includes(EXCHANGES.BINANCE)) {
+      allBids.push(...(binance.orderBook.bids.map(bid => ({ ...bid, exchange: EXCHANGES.BINANCE }))));
+      allAsks.push(...(binance.orderBook.asks.map(ask => ({ ...ask, exchange: EXCHANGES.BINANCE }))));
     }
 
-    workerRef.current.postMessage({
-      type: 'INIT',
-      payload: { symbol, exchanges: enabledExchanges }
-    });
+    if (enabledExchanges.includes(EXCHANGES.BYBIT)) {
+      allBids.push(...(bybit.orderBook.bids.map(bid => ({ ...bid, exchange: EXCHANGES.BYBIT }))));
+      allAsks.push(...(bybit.orderBook.asks.map(ask => ({ ...ask, exchange: EXCHANGES.BYBIT }))));
+    }
 
-    return () => {
-      if (workerRef.current) {
-        workerRef.current.terminate();
-      }
-    };
-  }, [symbol, enabledExchanges, setExchangeData, setError]);
+    if (enabledExchanges.includes(EXCHANGES.COINBASE)) {
+      allBids.push(...(coinbase.orderBook.bids.map(bid => ({ ...bid, exchange: EXCHANGES.COINBASE }))));
+      allAsks.push(...(coinbase.orderBook.asks.map(ask => ({ ...ask, exchange: EXCHANGES.COINBASE }))));
+    }
 
-  useEffect(() => {
-    workerRef.current.postMessage({
-      type: 'UPDATE_EXCHANGES',
-      payload: { exchanges: enabledExchanges }
-    });
-  }, [enabledExchanges]);
+    // Aggregate and sort bids
+    const aggregatedBids = allBids
+      .reduce((acc, bid) => {
+        const existingBid = acc.find(b => b.price === bid.price);
+        if (existingBid) {
+          existingBid.quantity += bid.quantity;
+          existingBid.exchanges = [...existingBid.exchanges, bid.exchange];
+        } else {
+          acc.push({ ...bid, exchanges: [bid.exchange] });
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => b.price - a.price)
+      .slice(0, 20);
 
-  useEffect(() => {
-    workerRef.current.postMessage({
-      type: 'UPDATE_SYMBOL',
-      payload: { symbol }
-    });
-  }, [symbol]);
+    // Aggregate and sort asks
+    const aggregatedAsks = allAsks
+      .reduce((acc, ask) => {
+        const existingAsk = acc.find(a => a.price === ask.price);
+        if (existingAsk) {
+          existingAsk.quantity += ask.quantity;
+          existingAsk.exchanges = [...existingAsk.exchanges, ask.exchange];
+        } else {
+          acc.push({ ...ask, exchanges: [ask.exchange] });
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => a.price - b.price)
+      .slice(0, 20);
+
+    return { bids: aggregatedBids, asks: aggregatedAsks };
+  }, [
+    enabledExchanges,
+    binance.orderBook,
+    bybit.orderBook,
+    coinbase.orderBook
+  ]);
 
   const handleToggleExchange = (exchange) => {
     setEnabledExchanges(prev => {
@@ -83,68 +97,6 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
     });
   };
 
-  // Aggregate order book data from all enabled exchanges
-  useEffect(() => {
-    try {
-      const allBids = [];
-      const allAsks = [];
-
-      enabledExchanges.forEach(exchange => {
-        const exchangeOrderBook = exchangeData[exchange] || { bids: [], asks: [] };
-        const { bids: exchangeBids = [], asks: exchangeAsks = [] } = exchangeOrderBook;
-        
-        if (Array.isArray(exchangeBids)) {
-          allBids.push(...exchangeBids.map(bid => ({ ...bid, exchange })));
-        }
-        if (Array.isArray(exchangeAsks)) {
-          allAsks.push(...exchangeAsks.map(ask => ({ ...ask, exchange })));
-        }
-      });
-
-      // Sort and aggregate orders at the same price level
-      const aggregatedBids = allBids
-        .reduce((acc, bid) => {
-          if (!bid || typeof bid.price === 'undefined' || typeof bid.quantity === 'undefined') {
-            return acc;
-          }
-          const existingBid = acc.find(b => b.price === bid.price);
-          if (existingBid) {
-            existingBid.quantity += bid.quantity;
-            existingBid.exchanges = [...existingBid.exchanges, bid.exchange];
-          } else {
-            acc.push({ ...bid, exchanges: [bid.exchange] });
-          }
-          return acc;
-        }, [])
-        .sort((a, b) => b.price - a.price)
-        .slice(0, 50);
-
-      const aggregatedAsks = allAsks
-        .reduce((acc, ask) => {
-          if (!ask || typeof ask.price === 'undefined' || typeof ask.quantity === 'undefined') {
-            return acc;
-          }
-          const existingAsk = acc.find(a => a.price === ask.price);
-          if (existingAsk) {
-            existingAsk.quantity += ask.quantity;
-            existingAsk.exchanges = [...existingAsk.exchanges, ask.exchange];
-          } else {
-            acc.push({ ...ask, exchanges: [ask.exchange] });
-          }
-          return acc;
-        }, [])
-        .sort((a, b) => a.price - b.price)
-        .slice(0, 50);
-
-      setBids(aggregatedBids);
-      setAsks(aggregatedAsks);
-    } catch (error) {
-      console.error('Error aggregating order book data:', error);
-      setBids([]);
-      setAsks([]);
-    }
-  }, [enabledExchanges, exchangeData]);
-
   const formatNumber = (num) => {
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 2,
@@ -155,11 +107,18 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
   return (
     <div className="orderbook">
       {error && <div className="orderbook-error">{error}</div>}
-      <OrderBookSettings
-        enabledExchanges={enabledExchanges}
-        onToggleExchange={handleToggleExchange}
-        symbol={symbol}
-      />
+      <div className="exchange-toggles">
+        {Object.values(EXCHANGES).map(exchange => (
+          <label key={exchange} className="exchange-toggle">
+            <input
+              type="checkbox"
+              checked={enabledExchanges.includes(exchange)}
+              onChange={() => handleToggleExchange(exchange)}
+            />
+            <span>{exchange}</span>
+          </label>
+        ))}
+      </div>
       
       <div className="orderbook-content">
         <div className="orderbook-header">
@@ -171,7 +130,7 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
         </div>
         <div className="orderbook-body">
           <div className="orderbook-section asks-section">
-            {asks.slice(0, 16).map((ask, index) => {
+            {asks.map((ask, index) => {
               const totalUpToHere = asks
                 .slice(0, index + 1)
                 .reduce((sum, a) => sum + a.quantity, 0);
@@ -183,6 +142,9 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
                   <div className="depth-visualization" style={{
                     width: `${(ask.quantity / Math.max(...asks.map(a => a.quantity))) * 100}%`
                   }} />
+                  <div className="exchanges">
+                    {ask.exchanges.join(', ')}
+                  </div>
                 </div>
               );
             })}
@@ -198,7 +160,7 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
           </div>
 
           <div className="orderbook-section bids-section">
-            {bids.slice(0, 16).map((bid, index) => {
+            {bids.map((bid, index) => {
               const totalUpToHere = bids
                 .slice(0, index + 1)
                 .reduce((sum, b) => sum + b.quantity, 0);
@@ -210,6 +172,9 @@ const OrderBook = ({ symbol = 'BTCUSDT' }) => {
                   <div className="depth-visualization" style={{
                     width: `${(bid.quantity / Math.max(...bids.map(b => b.quantity))) * 100}%`
                   }} />
+                  <div className="exchanges">
+                    {bid.exchanges.join(', ')}
+                  </div>
                 </div>
               );
             })}
