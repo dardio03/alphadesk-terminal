@@ -13,12 +13,26 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const layout = [
-    { i: 'chart', x: 0, y: 0, w: 8, h: 20, static: true },
-    { i: 'price', x: 8, y: 0, w: 4, h: 10, static: true },
-    { i: 'orderbook', x: 8, y: 10, w: 4, h: 10, static: true },
-    { i: 'changes', x: 0, y: 20, w: 12, h: 10, static: true }
-  ];
+  const defaultLayouts = {
+    lg: [
+      { i: 'chart', x: 0, y: 0, w: 8, h: 20, minW: 4, minH: 8 },
+      { i: 'price', x: 8, y: 0, w: 4, h: 10, minW: 3, minH: 6 },
+      { i: 'orderbook', x: 8, y: 10, w: 4, h: 10, minW: 3, minH: 6 },
+      { i: 'changes', x: 0, y: 20, w: 12, h: 10, minW: 6, minH: 5 }
+    ]
+  };
+
+  // Load saved layout from localStorage or use default
+  const [layouts, setLayouts] = useState(() => {
+    const savedLayouts = localStorage.getItem('tradingLayoutState');
+    return savedLayouts ? JSON.parse(savedLayouts) : defaultLayouts;
+  });
+
+  // Save layout changes to localStorage
+  const handleLayoutChange = (_, allLayouts) => {
+    setLayouts(allLayouts);
+    localStorage.setItem('tradingLayoutState', JSON.stringify(allLayouts));
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -44,15 +58,20 @@ const App = () => {
     <div className="app-container">
       <ResponsiveGridLayout
         className="layout"
-        layouts={{ lg: layout }}
-        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-        cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
+        layouts={layouts}
+        breakpoints={{ lg: 1200, md: 996, sm: 768 }}
+        cols={{ lg: 12, md: 12, sm: 12 }}
         rowHeight={30}
-        width={1200}
         margin={[10, 10]}
-        containerPadding={[0, 0]}
-        isDraggable={false}
-        isResizable={false}
+        containerPadding={[10, 10]}
+        onLayoutChange={handleLayoutChange}
+        draggableHandle=".widget-header"
+        isDraggable={true}
+        isResizable={true}
+        resizeHandles={['se']}
+        preventCollision={false}
+        compactType="vertical"
+        useCSSTransforms={true}
       >
         <div key="chart" className="widget">
           <div className="widget-header">Chart</div>
