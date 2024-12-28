@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 const useBinanceOrderBook = (symbol) => {
   const [orderBook, setOrderBook] = useState({ bids: [], asks: [] });
   const [error, setError] = useState(null);
+  const [connectionState, setConnectionState] = useState('disconnected');
 
   // Function to fetch initial order book snapshot
   const fetchSnapshot = useCallback(async () => {
@@ -42,10 +43,12 @@ const useBinanceOrderBook = (symbol) => {
         setError(null);
 
         // Then connect to WebSocket for updates
-        ws = new WebSocket('wss://stream.binance.com:9443/ws');
+        setConnectionState('connecting');
+        ws = new WebSocket('wss://stream.binance.com/ws');
 
         ws.onopen = () => {
           console.log('Binance WebSocket connected');
+          setConnectionState('connected');
           ws.send(JSON.stringify({
             method: 'SUBSCRIBE',
             params: [`${symbol.toLowerCase()}@depth@100ms`],
@@ -110,11 +113,13 @@ const useBinanceOrderBook = (symbol) => {
 
         ws.onerror = (err) => {
           console.error('Binance WebSocket error:', err);
+          setConnectionState('error');
           setError('Failed to connect to Binance');
         };
 
         ws.onclose = () => {
           console.log('Binance WebSocket closed');
+          setConnectionState('disconnected');
           if (retryCount < maxRetries) {
             retryCount++;
             setTimeout(connect, 1000 * retryCount); // Exponential backoff
@@ -148,7 +153,7 @@ const useBinanceOrderBook = (symbol) => {
     };
   }, [symbol, fetchSnapshot]);
 
-  return { orderBook, error };
+  return { orderBook, error, connectionState };
 };
 
 export default useBinanceOrderBook;

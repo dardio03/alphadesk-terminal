@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 const useCoinbaseOrderBook = (symbol) => {
   const [orderBook, setOrderBook] = useState({ bids: [], asks: [] });
   const [error, setError] = useState(null);
+  const [connectionState, setConnectionState] = useState('disconnected');
 
   // Convert Binance/Bybit style symbol to Coinbase format (e.g., BTCUSDT -> BTC-USDT)
   const formatSymbol = (sym) => {
@@ -51,10 +52,12 @@ const useCoinbaseOrderBook = (symbol) => {
         setError(null);
 
         // Then connect to WebSocket for updates
+        setConnectionState('connecting');
         ws = new WebSocket('wss://ws-feed.exchange.coinbase.com');
 
         ws.onopen = () => {
           console.log('Coinbase WebSocket connected');
+          setConnectionState('connected');
           const formattedSymbol = formatSymbol(symbol);
           ws.send(JSON.stringify({
             type: 'subscribe',
@@ -122,11 +125,13 @@ const useCoinbaseOrderBook = (symbol) => {
 
         ws.onerror = (err) => {
           console.error('Coinbase WebSocket error:', err);
+          setConnectionState('error');
           setError('Failed to connect to Coinbase');
         };
 
         ws.onclose = () => {
           console.log('Coinbase WebSocket closed');
+          setConnectionState('disconnected');
           if (retryCount < maxRetries) {
             retryCount++;
             setTimeout(connect, 1000 * retryCount);
@@ -161,7 +166,7 @@ const useCoinbaseOrderBook = (symbol) => {
     };
   }, [symbol, fetchSnapshot]);
 
-  return { orderBook, error };
+  return { orderBook, error, connectionState };
 };
 
 export default useCoinbaseOrderBook;
