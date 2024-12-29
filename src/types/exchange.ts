@@ -10,20 +10,31 @@ export interface OrderBookData {
   asks: OrderBookEntry[];
 }
 
-export interface WebSocketMessage {
+export interface BaseWebSocketMessage {
   type?: string;
   data?: any;
-  bids?: [string, string][];
-  asks?: [string, string][];
+}
+
+export interface BinanceWebSocketMessage extends BaseWebSocketMessage {
   e?: string;
   E?: number;
   s?: string;
+  bids?: [string, string][];
+  asks?: [string, string][];
   b?: [string, string][];
   a?: [string, string][];
+}
+
+export interface CoinbaseWebSocketMessage extends BaseWebSocketMessage {
+  type: string;
   product_ids?: string[];
   channels?: string[];
+  bids?: [string, string][];
+  asks?: [string, string][];
   changes?: [string, string, string][];
 }
+
+export type WebSocketMessage = BinanceWebSocketMessage | CoinbaseWebSocketMessage;
 
 export interface ExchangeHookResult {
   orderBook: OrderBookData;

@@ -24,12 +24,24 @@ interface LayoutItem {
   static?: boolean;
 }
 
+type Breakpoint = 'lg' | 'md' | 'sm' | 'xs' | 'xxs';
+
 interface Layouts {
-  lg: LayoutItem[];
-  md: LayoutItem[];
-  sm: LayoutItem[];
-  xs: LayoutItem[];
-  xxs: LayoutItem[];
+  [key: string]: Layout[];
+  lg: Layout[];
+  md: Layout[];
+  sm: Layout[];
+  xs: Layout[];
+  xxs: Layout[];
+}
+
+interface GridConfig {
+  [key: string]: number;
+  lg: number;
+  md: number;
+  sm: number;
+  xs: number;
+  xxs: number;
 }
 
 const App: React.FC = () => {
@@ -67,8 +79,8 @@ const App: React.FC = () => {
     ]
   });
 
-  const onLayoutChange = (layout: LayoutItem[], allLayouts: Layouts) => {
-    setLayouts(allLayouts);
+  const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
+    setLayouts(allLayouts as Layouts);
   };
 
   return (
@@ -76,8 +88,8 @@ const App: React.FC = () => {
       <ResponsiveGridLayout
         className="layout"
         layouts={layouts}
-        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-        cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
+        breakpoints={({ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 } as GridConfig)}
+        cols={({ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 } as GridConfig)}
         rowHeight={30}
         margin={[10, 10]}
         onLayoutChange={onLayoutChange}
