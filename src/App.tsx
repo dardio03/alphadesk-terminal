@@ -73,8 +73,12 @@ const App: React.FC = () => {
     ]
   });
 
-  const onLayoutChange = (layout: Layout[], layouts: { [key: string]: Layout[] }) => {
-    setLayouts(layouts as Layouts);
+  const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
+    setLayouts(allLayouts as Layouts);
+  };
+
+  const handleLayoutChange = (layout: Layout[]) => {
+    // Handle single layout change if needed
   };
 
   return (
@@ -86,7 +90,8 @@ const App: React.FC = () => {
         cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 } as Cols}
         rowHeight={30}
         margin={[10, 10]}
-        onLayoutChange={onLayoutChange}
+        onLayoutChange={handleLayoutChange}
+        onLayoutsChange={onLayoutChange}
         draggableHandle=".widget-header"
       >
         <div key="orderbook" className="widget">
