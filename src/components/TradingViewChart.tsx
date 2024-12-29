@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { createChart, IChartApi, ISeriesApi, LineData } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, LineData, LineWidth, MouseEventParams, Time } from 'lightweight-charts';
 
 interface TradingViewChartProps {
   data: LineData[];
@@ -82,7 +82,7 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
           return;
         }
 
-        const price = param.seriesPrices.get(seriesRef.current!)?.toString();
+        const price = (param as any).seriesPrices?.get(seriesRef.current!)?.toString();
         if (price) {
           onCrosshairMove(parseFloat(price), param.time as number);
         }

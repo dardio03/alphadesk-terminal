@@ -11,8 +11,18 @@ export interface OrderBookData {
 }
 
 export interface WebSocketMessage {
-  type: string;
-  data: any;
+  type?: string;
+  data?: any;
+  bids?: [string, string][];
+  asks?: [string, string][];
+  e?: string;
+  E?: number;
+  s?: string;
+  b?: [string, string][];
+  a?: [string, string][];
+  product_ids?: string[];
+  channels?: string[];
+  changes?: [string, string, string][];
 }
 
 export interface ExchangeHookResult {
