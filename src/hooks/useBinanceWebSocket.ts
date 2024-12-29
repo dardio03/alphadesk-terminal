@@ -10,11 +10,11 @@ export const useBinanceWebSocket = ({ symbol, onData, onError }: WebSocketHookPr
     try {
       if (message.bids && message.asks) {
         const formattedData: OrderBookData = {
-          bids: message.bids.map(([price, quantity]) => ({
+          bids: message.bids.map(([price, quantity]: [string, string]) => ({
             price: parseFloat(price),
             quantity: parseFloat(quantity)
           })),
-          asks: message.asks.map(([price, quantity]) => ({
+          asks: message.asks.map(([price, quantity]: [string, string]) => ({
             price: parseFloat(price),
             quantity: parseFloat(quantity)
           }))

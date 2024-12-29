@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
+import { Responsive, WidthProvider, ResponsiveProps } from 'react-grid-layout';
 import OrderBook from './components/OrderBook';
 import LivePrice from './components/LivePrice';
 import PriceRange from './components/PriceRange';
