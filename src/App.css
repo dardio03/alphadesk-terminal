@@ -189,17 +189,77 @@ tr:nth-child(even) {
 }
 
 .widget-header {
-  padding: 12px 16px;
+  padding: 6px 12px;
   background-color: var(--widget-bg);
   border-bottom: 1px solid var(--border-color);
   font-weight: 500;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-primary);
   cursor: move;
   user-select: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  height: 32px;
+}
+
+.widget-header .title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.widget-header .actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.widget-header .settings-button {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+  width: 24px;
+  height: 24px;
+}
+
+.widget-header .settings-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.widget-header .settings-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.settings-menu {
+  position: absolute;
+  top: 36px;
+  right: 8px;
+  background-color: var(--widget-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px;
+  min-width: 200px;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.settings-menu-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
 }
 
 .widget-header:hover {
