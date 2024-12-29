@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import useWebSocket from './useWebSocket';
-import { WebSocketHookProps, OrderBookData, BinanceWebSocketMessage } from '../types/exchange';
+import { WebSocketHookProps, OrderBookData, WebSocketMessage, BinanceWebSocketMessage } from '../types/exchange';
 
 const BINANCE_WS_URL = 'wss://stream.binance.com/ws';
 
