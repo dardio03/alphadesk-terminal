@@ -15,7 +15,7 @@ const useBinanceOrderBook = (symbol: string): ExchangeHookResult => {
     setError(err);
   }, []);
 
-  const { connectionState } = useBinanceWebSocket({
+  const { connectionState, reconnect } = useBinanceWebSocket({
     symbol,
     onData: handleData,
     onError: handleError
@@ -59,7 +59,7 @@ const useBinanceOrderBook = (symbol: string): ExchangeHookResult => {
       });
   }, [fetchSnapshot]);
 
-  return { orderBook, error, connectionState };
+  return { orderBook, error, connectionState, reconnect };
 };
 
 export default useBinanceOrderBook;
