@@ -127,7 +127,46 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
             onChange={() => handleToggleExchange(exchange)}
           />
           <span>{exchange}</span>
-          <span className={`connection-status ${getConnectionStatus(exchange)}`}>
+          <span 
+            className={`connection-status ${getConnectionStatus(exchange)}`}
+            onClick={() => {
+              const status = getConnectionStatus(exchange);
+              if (status === 'disconnected' || status === 'error') {
+                switch (exchange) {
+                  case EXCHANGES.BINANCE:
+                    binance.reconnect?.();
+                    break;
+                  case EXCHANGES.BYBIT:
+                    bybit.reconnect?.();
+                    break;
+                  case EXCHANGES.COINBASE:
+                    coinbase.reconnect?.();
+                    break;
+                }
+              }
+            }}
+            title={
+              getConnectionStatus(exchange) === 'disconnected' || 
+              getConnectionStatus(exchange) === 'error' 
+                ? 'Click to reconnect' 
+                : undefined
+            }
+          >
+            {getConnectionStatus(exchange) === 'connected' && (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+            {getConnectionStatus(exchange) === 'connecting' && (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 3v3m0 12v3M5.636 5.636l2.122 2.122m8.484 8.484l2.122 2.122M3 12h3m12 0h3M5.636 18.364l2.122-2.122m8.484-8.484l2.122-2.122" />
+              </svg>
+            )}
+            {(getConnectionStatus(exchange) === 'disconnected' || getConnectionStatus(exchange) === 'error') && (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
             {getConnectionStatus(exchange)}
           </span>
         </label>
