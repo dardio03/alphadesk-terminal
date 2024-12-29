@@ -7,7 +7,12 @@ const useBybitOrderBook = (symbol: string): ExchangeHookResult => {
   const [connectionState] = useState<'disconnected'>('disconnected');
 
   // TODO: Implement Bybit integration
-  return { orderBook, error, connectionState };
+  const reconnect = () => {
+    // TODO: Implement Bybit reconnection
+    console.log('Bybit reconnection not implemented yet');
+  };
+
+  return { orderBook, error, connectionState, reconnect };
 };
 
 export default useBybitOrderBook;

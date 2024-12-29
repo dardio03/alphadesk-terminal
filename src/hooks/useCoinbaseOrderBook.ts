@@ -26,7 +26,7 @@ const useCoinbaseOrderBook = (symbol: string): ExchangeHookResult => {
     setError(err);
   }, []);
 
-  const { connectionState } = useCoinbaseWebSocket({
+  const { connectionState, reconnect } = useCoinbaseWebSocket({
     symbol,
     onData: handleData,
     onError: handleError
@@ -71,7 +71,7 @@ const useCoinbaseOrderBook = (symbol: string): ExchangeHookResult => {
       });
   }, [fetchSnapshot]);
 
-  return { orderBook, error, connectionState };
+  return { orderBook, error, connectionState, reconnect };
 };
 
 export default useCoinbaseOrderBook;

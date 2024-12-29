@@ -40,6 +40,7 @@ export interface ExchangeHookResult {
   orderBook: OrderBookData;
   error: string | null;
   connectionState: ConnectionState;
+  reconnect?: () => void;
 }
 
 export interface BinanceWebSocketMessage {
