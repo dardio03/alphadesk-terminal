@@ -62,7 +62,8 @@ export const useCoinbaseWebSocket = ({ symbol, onData, onError }: WebSocketHookP
 
   return {
     connectionState,
-    sendMessage
+    sendMessage,
+    reconnect
   };
 };
 
