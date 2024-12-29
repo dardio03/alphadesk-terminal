@@ -1,44 +1,5 @@
 declare module 'react-grid-layout' {
-  import type { ComponentType } from 'react';
-
-  export interface WidthProviderProps {
-    className?: string;
-    measureBeforeMount?: boolean;
-  }
-
-  export function WidthProvider<P extends WidthProviderProps>(
-    component: ComponentType<P>
-  ): ComponentType<Omit<P, 'width'>>;
-
-  export interface ReactGridLayoutProps {
-    className?: string;
-    style?: React.CSSProperties;
-    width?: number;
-    cols?: number | { [key: string]: number };
-    margin?: [number, number];
-    containerPadding?: [number, number];
-    rowHeight?: number;
-    maxRows?: number;
-    draggableHandle?: string;
-    layout?: Layout[];
-    onLayoutChange?: (layout: Layout[]) => void;
-  }
-
-  export interface ResponsiveProps extends ReactGridLayoutProps {
-    breakpoints?: { [key: string]: number };
-    cols?: { [key: string]: number };
-    layouts: { [key: string]: Layout[] };
-    width?: number;
-    onBreakpointChange?: (newBreakpoint: string, newCols: number) => void;
-    onLayoutsChange?: (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => void;
-    onWidthChange?: (
-      containerWidth: number,
-      margin: [number, number],
-      cols: number,
-      containerPadding: [number, number]
-    ) => void;
-  }
-  import React from 'react';
+  import type { ComponentType, PropsWithChildren } from 'react';
 
   export interface Layout {
     i: string;
@@ -61,7 +22,7 @@ declare module 'react-grid-layout' {
     [key: string]: Layout[];
   }
 
-  export interface ReactGridLayoutProps {
+  export interface ReactGridLayoutProps extends PropsWithChildren {
     className?: string;
     style?: React.CSSProperties;
     width?: number;
@@ -99,10 +60,19 @@ declare module 'react-grid-layout' {
     width?: number;
     onBreakpointChange?: (newBreakpoint: string, newCols: number) => void;
     onLayoutChange?: (currentLayout: Layout[], allLayouts: Layouts) => void;
+    onLayoutsChange?: (currentLayout: Layout[], allLayouts: Layouts) => void;
     onWidthChange?: (containerWidth: number, margin: [number, number], cols: number, containerPadding: [number, number]) => void;
   }
 
+  export interface WidthProviderProps extends PropsWithChildren {
+    className?: string;
+    measureBeforeMount?: boolean;
+  }
+
+  export function WidthProvider<P extends WidthProviderProps>(
+    component: ComponentType<P>
+  ): ComponentType<Omit<P, 'width'>>;
+
   export class Responsive extends React.Component<ResponsiveProps> {}
-  export class WidthProvider extends React.Component<any> {}
   export default class ReactGridLayout extends React.Component<ReactGridLayoutProps> {}
 }
