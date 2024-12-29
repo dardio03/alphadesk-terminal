@@ -42,34 +42,34 @@ const App: React.FC = () => {
   const [symbol] = useState('BTCUSDT');
   const [layouts, setLayouts] = useState<Layouts>({
     lg: [
-      { i: 'orderbook', x: 0, y: 0, w: 4, h: 24, minW: 3, minH: 12 },
-      { i: 'liveprice', x: 4, y: 0, w: 4, h: 6, minW: 3, minH: 4 },
-      { i: 'pricerange', x: 8, y: 0, w: 4, h: 6, minW: 3, minH: 4 },
-      { i: 'chart', x: 4, y: 6, w: 8, h: 18, minW: 6, minH: 12 }
+      { i: 'orderbook', x: 0, y: 0, w: 3, h: 32, minW: 3, minH: 16 },
+      { i: 'liveprice', x: 3, y: 0, w: 5, h: 8, minW: 3, minH: 6 },
+      { i: 'pricerange', x: 8, y: 0, w: 4, h: 8, minW: 3, minH: 6 },
+      { i: 'chart', x: 3, y: 8, w: 9, h: 24, minW: 6, minH: 16 }
     ],
     md: [
-      { i: 'orderbook', x: 0, y: 0, w: 5, h: 24, minW: 4 },
-      { i: 'liveprice', x: 5, y: 0, w: 7, h: 6, minW: 4 },
-      { i: 'pricerange', x: 5, y: 6, w: 7, h: 6, minW: 4 },
-      { i: 'chart', x: 5, y: 12, w: 7, h: 12, minW: 6 }
+      { i: 'orderbook', x: 0, y: 0, w: 4, h: 32, minW: 4, minH: 16 },
+      { i: 'liveprice', x: 4, y: 0, w: 8, h: 8, minW: 4, minH: 6 },
+      { i: 'pricerange', x: 4, y: 8, w: 8, h: 8, minW: 4, minH: 6 },
+      { i: 'chart', x: 4, y: 16, w: 8, h: 16, minW: 6, minH: 12 }
     ],
     sm: [
-      { i: 'orderbook', x: 0, y: 0, w: 6, h: 24, minW: 4 },
-      { i: 'liveprice', x: 6, y: 0, w: 6, h: 6, minW: 4 },
-      { i: 'pricerange', x: 6, y: 6, w: 6, h: 6, minW: 4 },
-      { i: 'chart', x: 0, y: 24, w: 12, h: 18, minW: 6 }
+      { i: 'orderbook', x: 0, y: 0, w: 5, h: 32, minW: 4, minH: 16 },
+      { i: 'liveprice', x: 5, y: 0, w: 7, h: 8, minW: 4, minH: 6 },
+      { i: 'pricerange', x: 5, y: 8, w: 7, h: 8, minW: 4, minH: 6 },
+      { i: 'chart', x: 0, y: 32, w: 12, h: 24, minW: 6, minH: 12 }
     ],
     xs: [
-      { i: 'orderbook', x: 0, y: 0, w: 12, h: 24, minW: 6 },
-      { i: 'liveprice', x: 0, y: 24, w: 12, h: 6, minW: 6 },
-      { i: 'pricerange', x: 0, y: 30, w: 12, h: 6, minW: 6 },
-      { i: 'chart', x: 0, y: 36, w: 12, h: 18, minW: 6 }
+      { i: 'orderbook', x: 0, y: 0, w: 12, h: 32, minW: 6, minH: 16 },
+      { i: 'liveprice', x: 0, y: 32, w: 12, h: 8, minW: 6, minH: 6 },
+      { i: 'pricerange', x: 0, y: 40, w: 12, h: 8, minW: 6, minH: 6 },
+      { i: 'chart', x: 0, y: 48, w: 12, h: 24, minW: 6, minH: 12 }
     ],
     xxs: [
-      { i: 'orderbook', x: 0, y: 0, w: 12, h: 24, minW: 6 },
-      { i: 'liveprice', x: 0, y: 24, w: 12, h: 6, minW: 6 },
-      { i: 'pricerange', x: 0, y: 30, w: 12, h: 6, minW: 6 },
-      { i: 'chart', x: 0, y: 36, w: 12, h: 18, minW: 6 }
+      { i: 'orderbook', x: 0, y: 0, w: 12, h: 32, minW: 6, minH: 16 },
+      { i: 'liveprice', x: 0, y: 32, w: 12, h: 8, minW: 6, minH: 6 },
+      { i: 'pricerange', x: 0, y: 40, w: 12, h: 8, minW: 6, minH: 6 },
+      { i: 'chart', x: 0, y: 48, w: 12, h: 24, minW: 6, minH: 12 }
     ]
   });
 
@@ -86,11 +86,11 @@ const App: React.FC = () => {
       <ResponsiveGridLayout
         className="layout"
         layouts={layouts}
-        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 } as Breakpoints}
+        breakpoints={{ lg: 1440, md: 1200, sm: 996, xs: 768, xxs: 480 } as Breakpoints}
         cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 } as Cols}
-        rowHeight={32}
-        margin={[12, 12]}
-        containerPadding={[16, 16]}
+        rowHeight={28}
+        margin={[16, 16]}
+        containerPadding={[24, 24]}
         onLayoutChange={handleLayoutChange}
         onLayoutsChange={onLayoutChange}
         draggableHandle=".widget-header"
