@@ -26,7 +26,7 @@ export const useBinanceWebSocket = ({ symbol, onData, onError }: WebSocketHookPr
     }
   }, [onData, onError]);
 
-  const { connectionState, sendMessage } = useWebSocket({
+  const { connectionState, sendMessage, reconnect } = useWebSocket({
     url: BINANCE_WS_URL,
     onMessage: handleMessage,
     onError,
