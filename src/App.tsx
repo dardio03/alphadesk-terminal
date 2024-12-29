@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Responsive, WidthProvider, ResponsiveProps } from 'react-grid-layout';
+import { Responsive, WidthProvider, ResponsiveProps, Layout } from 'react-grid-layout';
 import OrderBook from './components/OrderBook';
 import LivePrice from './components/LivePrice';
 import PriceRange from './components/PriceRange';
@@ -35,14 +35,8 @@ interface Layouts {
   xxs: Layout[];
 }
 
-interface GridConfig {
-  [key: string]: number;
-  lg: number;
-  md: number;
-  sm: number;
-  xs: number;
-  xxs: number;
-}
+type Breakpoints = { [key in Breakpoint]: number };
+type Cols = { [key in Breakpoint]: number };
 
 const App: React.FC = () => {
   const [symbol] = useState('BTCUSDT');
@@ -79,8 +73,8 @@ const App: React.FC = () => {
     ]
   });
 
-  const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
-    setLayouts(allLayouts as Layouts);
+  const onLayoutChange = (layout: Layout[], layouts: { [key: string]: Layout[] }) => {
+    setLayouts(layouts as Layouts);
   };
 
   return (
@@ -88,8 +82,8 @@ const App: React.FC = () => {
       <ResponsiveGridLayout
         className="layout"
         layouts={layouts}
-        breakpoints={({ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 } as GridConfig)}
-        cols={({ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 } as GridConfig)}
+        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 } as Breakpoints}
+        cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 } as Cols}
         rowHeight={30}
         margin={[10, 10]}
         onLayoutChange={onLayoutChange}

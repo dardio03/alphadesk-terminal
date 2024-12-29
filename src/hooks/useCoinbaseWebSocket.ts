@@ -17,21 +17,22 @@ const formatCoinbaseSymbol = (symbol: string): string => {
 };
 
 export const useCoinbaseWebSocket = ({ symbol, onData, onError }: WebSocketHookProps) => {
-  const handleMessage = useCallback((message: CoinbaseWebSocketMessage) => {
+  const handleMessage = useCallback((message: WebSocketMessage) => {
+    const coinbaseMessage = message as CoinbaseWebSocketMessage;
     try {
-      if (message.type === 'snapshot' && message.bids && message.asks) {
+      if (coinbaseMessage.type === 'snapshot' && coinbaseMessage.bids && coinbaseMessage.asks) {
         const formattedData: OrderBookData = {
-          bids: message.bids.slice(0, 20).map(([price, size]) => ({
+          bids: coinbaseMessage.bids.slice(0, 20).map(([price, size]) => ({
             price: parseFloat(price),
             quantity: parseFloat(size)
           })),
-          asks: message.asks.slice(0, 20).map(([price, size]) => ({
+          asks: coinbaseMessage.asks.slice(0, 20).map(([price, size]) => ({
             price: parseFloat(price),
             quantity: parseFloat(size)
           }))
         };
         onData(formattedData);
-      } else if (message.type === 'l2update' && message.changes) {
+      } else if (coinbaseMessage.type === 'l2update' && coinbaseMessage.changes) {
         // For l2update messages, we should update the local order book
         // but since we're getting frequent snapshots, we can ignore updates
         // and wait for the next snapshot for simplicity
