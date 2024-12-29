@@ -45,7 +45,8 @@ export const useBinanceWebSocket = ({ symbol, onData, onError }: WebSocketHookPr
 
   return {
     connectionState,
-    sendMessage
+    sendMessage,
+    reconnect
   };
 };
 
