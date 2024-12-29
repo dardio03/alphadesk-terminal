@@ -10,20 +10,34 @@ declare module 'react-grid-layout' {
     component: ComponentType<P>
   ): ComponentType<Omit<P, 'width'>>;
 
-  export type ResponsiveProps = {
+  export interface ReactGridLayoutProps {
+    className?: string;
+    style?: React.CSSProperties;
+    width?: number;
+    cols?: number | { [key: string]: number };
+    margin?: [number, number];
+    containerPadding?: [number, number];
+    rowHeight?: number;
+    maxRows?: number;
+    draggableHandle?: string;
+    layout?: Layout[];
+    onLayoutChange?: (layout: Layout[]) => void;
+  }
+
+  export interface ResponsiveProps extends ReactGridLayoutProps {
     breakpoints?: { [key: string]: number };
     cols?: { [key: string]: number };
     layouts: { [key: string]: Layout[] };
     width?: number;
     onBreakpointChange?: (newBreakpoint: string, newCols: number) => void;
-    onLayoutChange?: (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => void;
+    onLayoutsChange?: (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => void;
     onWidthChange?: (
       containerWidth: number,
       margin: [number, number],
       cols: number,
       containerPadding: [number, number]
     ) => void;
-  } & ReactGridLayoutProps;
+  }
   import React from 'react';
 
   export interface Layout {

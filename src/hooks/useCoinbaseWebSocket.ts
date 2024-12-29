@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import useWebSocket from './useWebSocket';
-import { WebSocketHookProps, OrderBookData, CoinbaseWebSocketMessage } from '../types/exchange';
+import { WebSocketHookProps, OrderBookData, WebSocketMessage, CoinbaseWebSocketMessage } from '../types/exchange';
 
 const COINBASE_WS_URL = 'wss://ws-feed.exchange.coinbase.com';
 
