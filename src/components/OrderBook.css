@@ -109,6 +109,55 @@
   position: relative;
 }
 
+.orderbook-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: linear-gradient(to bottom, var(--widget-bg), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.orderbook-section::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: linear-gradient(to top, var(--widget-bg), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.orderbook-section.scrolled-top::before {
+  opacity: 1;
+}
+
+.orderbook-section.scrolled-bottom::after {
+  opacity: 1;
+}
+
+.scroll-indicator {
+  position: absolute;
+  right: 8px;
+  width: 4px;
+  height: 40px;
+  background-color: var(--text-secondary);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 3;
+  pointer-events: none;
+}
+
 .orderbook-section-content {
   height: 100%;
   overflow-y: auto;
@@ -142,11 +191,40 @@
   padding: 4px 8px;
   font-size: 12px;
   position: relative;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  cursor: pointer;
 }
 
 .order-row:hover {
   background-color: rgba(255, 255, 255, 0.05);
+  transform: translateX(2px);
+}
+
+.order-row:hover .exchanges {
+  opacity: 1;
+}
+
+.order-row:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: var(--widget-bg);
+  border: 1px solid var(--border-color);
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.order-row:hover:hover::after {
+  opacity: 1;
 }
 
 .depth-visualization {

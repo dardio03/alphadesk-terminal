@@ -139,20 +139,43 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
   const bidsRef = useRef<HTMLDivElement>(null);
   const [scrolling, setScrolling] = useState<'asks' | 'bids' | null>(null);
 
+  const [scrollStates, setScrollStates] = useState({
+    asks: { isTop: true, isBottom: false },
+    bids: { isTop: true, isBottom: false }
+  });
+
+  const updateScrollState = (section: 'asks' | 'bids', target: HTMLDivElement) => {
+    const isTop = target.scrollTop <= 0;
+    const isBottom = Math.abs(target.scrollHeight - target.clientHeight - target.scrollTop) <= 1;
+    
+    setScrollStates(prev => ({
+      ...prev,
+      [section]: { isTop, isBottom }
+    }));
+  };
+
   const handleScroll = (section: 'asks' | 'bids') => (event: React.UIEvent<HTMLDivElement>) => {
     if (scrolling !== section) {
       setScrolling(section);
       const target = event.currentTarget;
       const otherRef = section === 'asks' ? bidsRef.current : asksRef.current;
       
+      updateScrollState(section, target);
+      
       if (otherRef) {
         const scrollPercentage = target.scrollTop / (target.scrollHeight - target.clientHeight);
         const otherScrollTop = scrollPercentage * (otherRef.scrollHeight - otherRef.clientHeight);
         otherRef.scrollTop = otherScrollTop;
+        updateScrollState(section === 'asks' ? 'bids' : 'asks', otherRef);
       }
       
       setScrolling(null);
     }
+  };
+
+  const formatTooltip = (entry: AggregatedOrderBookEntry) => {
+    const totalValue = entry.price * entry.quantity;
+    return `${entry.exchanges.length} exchange${entry.exchanges.length > 1 ? 's' : ''} | Total value: $${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   return (
@@ -171,7 +194,7 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
           </div>
         </div>
         <div className="orderbook-sections">
-          <div className="orderbook-section asks-section">
+          <div className={`orderbook-section asks-section ${scrollStates.asks.isTop ? 'scrolled-top' : ''} ${scrollStates.asks.isBottom ? 'scrolled-bottom' : ''}`}>
             <div 
               ref={asksRef}
               className="orderbook-section-content"
@@ -182,7 +205,11 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
                   .slice(0, index + 1)
                   .reduce((sum, a) => sum + a.quantity, 0);
                 return (
-                  <div key={`ask-${index}`} className="order-row ask">
+                  <div 
+                    key={`ask-${index}`} 
+                    className="order-row ask"
+                    data-tooltip={formatTooltip(ask)}
+                  >
                     <div className="amount">{formatQuantity(ask.quantity)}</div>
                     <div className="total">{formatQuantity(totalUpToHere)}</div>
                     <div className="price sell">{formatPrice(ask.price)}</div>
@@ -196,6 +223,13 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
                 );
               })}
             </div>
+            <div 
+              className="scroll-indicator"
+              style={{
+                opacity: scrollStates.asks.isTop ? 0 : 0.3,
+                transform: `translateY(${scrollStates.asks.isTop ? '0' : '100%'})`
+              }}
+            />
           </div>
 
           <div className="spread">
@@ -207,7 +241,7 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
             )}
           </div>
 
-          <div className="orderbook-section bids-section">
+          <div className={`orderbook-section bids-section ${scrollStates.bids.isTop ? 'scrolled-top' : ''} ${scrollStates.bids.isBottom ? 'scrolled-bottom' : ''}`}>
             <div 
               ref={bidsRef}
               className="orderbook-section-content"
@@ -218,7 +252,11 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
                   .slice(0, index + 1)
                   .reduce((sum, b) => sum + b.quantity, 0);
                 return (
-                  <div key={`bid-${index}`} className="order-row bid">
+                  <div 
+                    key={`bid-${index}`} 
+                    className="order-row bid"
+                    data-tooltip={formatTooltip(bid)}
+                  >
                     <div className="amount">{formatQuantity(bid.quantity)}</div>
                     <div className="total">{formatQuantity(totalUpToHere)}</div>
                     <div className="price buy">{formatPrice(bid.price)}</div>
@@ -232,6 +270,13 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
                 );
               })}
             </div>
+            <div 
+              className="scroll-indicator"
+              style={{
+                opacity: scrollStates.bids.isTop ? 0 : 0.3,
+                transform: `translateY(${scrollStates.bids.isTop ? '0' : '100%'})`
+              }}
+            />
           </div>
         </div>
       </div>
