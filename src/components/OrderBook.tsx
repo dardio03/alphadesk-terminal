@@ -83,8 +83,7 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
         }
         return acc;
       }, [])
-      .sort((a, b) => b.price - a.price)
-      .slice(0, 20);
+      .sort((a, b) => b.price - a.price);
 
     // Aggregate and sort asks
     const aggregatedAsks: AggregatedOrderBookEntry[] = allAsks
@@ -98,8 +97,7 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
         }
         return acc;
       }, [])
-      .sort((a, b) => a.price - b.price)
-      .slice(0, 20);
+      .sort((a, b) => a.price - b.price);
 
     return { bids: aggregatedBids, asks: aggregatedAsks };
   }, [
@@ -137,6 +135,26 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
     </div>
   );
 
+  const asksRef = useRef<HTMLDivElement>(null);
+  const bidsRef = useRef<HTMLDivElement>(null);
+  const [scrolling, setScrolling] = useState<'asks' | 'bids' | null>(null);
+
+  const handleScroll = (section: 'asks' | 'bids') => (event: React.UIEvent<HTMLDivElement>) => {
+    if (scrolling !== section) {
+      setScrolling(section);
+      const target = event.currentTarget;
+      const otherRef = section === 'asks' ? bidsRef.current : asksRef.current;
+      
+      if (otherRef) {
+        const scrollPercentage = target.scrollTop / (target.scrollHeight - target.clientHeight);
+        const otherScrollTop = scrollPercentage * (otherRef.scrollHeight - otherRef.clientHeight);
+        otherRef.scrollTop = otherScrollTop;
+      }
+      
+      setScrolling(null);
+    }
+  };
+
   return (
     <div className={`orderbook ${className}`}>
       {error && <div className="orderbook-error">{error}</div>}
@@ -152,26 +170,32 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
             <div className="price">Price</div>
           </div>
         </div>
-        <div className="orderbook-body">
+        <div className="orderbook-sections">
           <div className="orderbook-section asks-section">
-            {asks.map((ask, index) => {
-              const totalUpToHere = asks
-                .slice(0, index + 1)
-                .reduce((sum, a) => sum + a.quantity, 0);
-              return (
-                <div key={`ask-${index}`} className="order-row ask">
-                  <div className="amount">{formatQuantity(ask.quantity)}</div>
-                  <div className="total">{formatQuantity(totalUpToHere)}</div>
-                  <div className="price sell">{formatPrice(ask.price)}</div>
-                  <div className="depth-visualization" style={{
-                    width: `${(ask.quantity / Math.max(...asks.map(a => a.quantity))) * 100}%`
-                  }} />
-                  <div className="exchanges">
-                    {ask.exchanges.join(', ')}
+            <div 
+              ref={asksRef}
+              className="orderbook-section-content"
+              onScroll={handleScroll('asks')}
+            >
+              {asks.map((ask, index) => {
+                const totalUpToHere = asks
+                  .slice(0, index + 1)
+                  .reduce((sum, a) => sum + a.quantity, 0);
+                return (
+                  <div key={`ask-${index}`} className="order-row ask">
+                    <div className="amount">{formatQuantity(ask.quantity)}</div>
+                    <div className="total">{formatQuantity(totalUpToHere)}</div>
+                    <div className="price sell">{formatPrice(ask.price)}</div>
+                    <div className="depth-visualization" style={{
+                      width: `${(ask.quantity / Math.max(...asks.slice(0, 16).map(a => a.quantity))) * 100}%`
+                    }} />
+                    <div className="exchanges">
+                      {ask.exchanges.join(', ')}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
           <div className="spread">
@@ -184,24 +208,30 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
           </div>
 
           <div className="orderbook-section bids-section">
-            {bids.map((bid, index) => {
-              const totalUpToHere = bids
-                .slice(0, index + 1)
-                .reduce((sum, b) => sum + b.quantity, 0);
-              return (
-                <div key={`bid-${index}`} className="order-row bid">
-                  <div className="amount">{formatQuantity(bid.quantity)}</div>
-                  <div className="total">{formatQuantity(totalUpToHere)}</div>
-                  <div className="price buy">{formatPrice(bid.price)}</div>
-                  <div className="depth-visualization" style={{
-                    width: `${(bid.quantity / Math.max(...bids.map(b => b.quantity))) * 100}%`
-                  }} />
-                  <div className="exchanges">
-                    {bid.exchanges.join(', ')}
+            <div 
+              ref={bidsRef}
+              className="orderbook-section-content"
+              onScroll={handleScroll('bids')}
+            >
+              {bids.map((bid, index) => {
+                const totalUpToHere = bids
+                  .slice(0, index + 1)
+                  .reduce((sum, b) => sum + b.quantity, 0);
+                return (
+                  <div key={`bid-${index}`} className="order-row bid">
+                    <div className="amount">{formatQuantity(bid.quantity)}</div>
+                    <div className="total">{formatQuantity(totalUpToHere)}</div>
+                    <div className="price buy">{formatPrice(bid.price)}</div>
+                    <div className="depth-visualization" style={{
+                      width: `${(bid.quantity / Math.max(...bids.slice(0, 16).map(b => b.quantity))) * 100}%`
+                    }} />
+                    <div className="exchanges">
+                      {bid.exchanges.join(', ')}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
