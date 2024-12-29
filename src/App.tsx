@@ -42,34 +42,34 @@ const App: React.FC = () => {
   const [symbol] = useState('BTCUSDT');
   const [layouts, setLayouts] = useState<Layouts>({
     lg: [
-      { i: 'orderbook', x: 0, y: 0, w: 3, h: 12, minW: 2, minH: 6 },
+      { i: 'orderbook', x: 0, y: 0, w: 3, h: 20, minW: 2, minH: 10 },
       { i: 'liveprice', x: 3, y: 0, w: 3, h: 4, minW: 2, minH: 3 },
       { i: 'pricerange', x: 6, y: 0, w: 3, h: 4, minW: 2, minH: 3 },
-      { i: 'chart', x: 3, y: 4, w: 9, h: 8, minW: 4, minH: 6 }
+      { i: 'chart', x: 3, y: 4, w: 9, h: 16, minW: 4, minH: 6 }
     ],
     md: [
-      { i: 'orderbook', x: 0, y: 0, w: 4, h: 12 },
+      { i: 'orderbook', x: 0, y: 0, w: 4, h: 20 },
       { i: 'liveprice', x: 4, y: 0, w: 4, h: 4 },
       { i: 'pricerange', x: 8, y: 0, w: 4, h: 4 },
-      { i: 'chart', x: 4, y: 4, w: 8, h: 8 }
+      { i: 'chart', x: 4, y: 4, w: 8, h: 16 }
     ],
     sm: [
-      { i: 'orderbook', x: 0, y: 0, w: 6, h: 10 },
+      { i: 'orderbook', x: 0, y: 0, w: 6, h: 20 },
       { i: 'liveprice', x: 6, y: 0, w: 6, h: 4 },
-      { i: 'pricerange', x: 0, y: 10, w: 6, h: 4 },
-      { i: 'chart', x: 0, y: 14, w: 12, h: 8 }
+      { i: 'pricerange', x: 6, y: 4, w: 6, h: 4 },
+      { i: 'chart', x: 0, y: 20, w: 12, h: 16 }
     ],
     xs: [
-      { i: 'orderbook', x: 0, y: 0, w: 12, h: 10 },
-      { i: 'liveprice', x: 0, y: 10, w: 12, h: 4 },
-      { i: 'pricerange', x: 0, y: 14, w: 12, h: 4 },
-      { i: 'chart', x: 0, y: 18, w: 12, h: 8 }
+      { i: 'orderbook', x: 0, y: 0, w: 12, h: 20 },
+      { i: 'liveprice', x: 0, y: 20, w: 12, h: 4 },
+      { i: 'pricerange', x: 0, y: 24, w: 12, h: 4 },
+      { i: 'chart', x: 0, y: 28, w: 12, h: 16 }
     ],
     xxs: [
-      { i: 'orderbook', x: 0, y: 0, w: 12, h: 10 },
-      { i: 'liveprice', x: 0, y: 10, w: 12, h: 4 },
-      { i: 'pricerange', x: 0, y: 14, w: 12, h: 4 },
-      { i: 'chart', x: 0, y: 18, w: 12, h: 8 }
+      { i: 'orderbook', x: 0, y: 0, w: 12, h: 20 },
+      { i: 'liveprice', x: 0, y: 20, w: 12, h: 4 },
+      { i: 'pricerange', x: 0, y: 24, w: 12, h: 4 },
+      { i: 'chart', x: 0, y: 28, w: 12, h: 16 }
     ]
   });
 

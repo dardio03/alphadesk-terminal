@@ -202,8 +202,19 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
       updateScrollState(section, target);
       
       if (otherRef) {
-        const scrollPercentage = target.scrollTop / (target.scrollHeight - target.clientHeight);
-        const otherScrollTop = scrollPercentage * (otherRef.scrollHeight - otherRef.clientHeight);
+        const targetScrollMax = target.scrollHeight - target.clientHeight;
+        const otherScrollMax = otherRef.scrollHeight - otherRef.clientHeight;
+        
+        // For asks section (reversed), we need to invert the scroll percentage
+        const scrollPercentage = section === 'asks'
+          ? (targetScrollMax - target.scrollTop) / targetScrollMax
+          : target.scrollTop / targetScrollMax;
+        
+        // Apply the inverted percentage for asks section
+        const otherScrollTop = section === 'asks'
+          ? otherScrollMax * scrollPercentage
+          : otherScrollMax * (1 - scrollPercentage);
+        
         otherRef.scrollTop = otherScrollTop;
         updateScrollState(section === 'asks' ? 'bids' : 'asks', otherRef);
       }
