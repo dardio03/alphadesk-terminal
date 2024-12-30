@@ -191,25 +191,27 @@ tr:nth-child(even) {
 .widget {
   background-color: var(--widget-bg);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
   height: 100% !important;
   display: flex;
   flex-direction: column;
-  transition: all 200ms ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(8px);
 }
 
 .widget:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
   border-color: var(--accent-color);
+  transform: translateY(-1px);
 }
 
 .widget-header {
-  padding: 6px 12px;
+  padding: 12px 16px;
   background-color: var(--widget-bg);
   border-bottom: 1px solid var(--border-color);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 13px;
   color: var(--text-primary);
   cursor: move;
@@ -217,7 +219,10 @@ tr:nth-child(even) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 32px;
+  letter-spacing: 0.3px;
+  height: 44px;
+  box-sizing: border-box;
+  transition: background-color 0.2s ease;
 }
 
 .widget-header .title {
@@ -287,8 +292,9 @@ tr:nth-child(even) {
   flex: 1;
   overflow: auto;
   padding: 0;
-  height: calc(100% - 41px) !important;
+  height: calc(100% - 44px) !important;
   position: relative;
+  background-color: var(--widget-bg);
 }
 
 /* Animation for widget changes */

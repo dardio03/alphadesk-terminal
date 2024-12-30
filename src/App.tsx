@@ -43,7 +43,7 @@ const App: React.FC = () => {
   const [layouts, setLayouts] = useState<Layouts>({
     lg: [
       { i: 'orderbook', x: 0, y: 0, w: 3, h: 32, minW: 3, minH: 16 },
-      { i: 'liveprice', x: 3, y: 0, w: 5, h: 8, minW: 3, minH: 6 },
+      { i: 'liveprice', x: 3, y: 0, w: 3, h: 8, minW: 3, minH: 6 },
       { i: 'pricerange', x: 3, y: 8, w: 3, h: 8, minW: 3, minH: 6 },
       { i: 'chart', x: 6, y: 0, w: 6, h: 32, minW: 6, minH: 16 }
     ],
@@ -86,11 +86,11 @@ const App: React.FC = () => {
       <ResponsiveGridLayout
         className="layout"
         layouts={layouts}
-        breakpoints={{ lg: 1440, md: 1200, sm: 996, xs: 768, xxs: 480 } as Breakpoints}
+        breakpoints={{ lg: 1600, md: 1200, sm: 992, xs: 768, xxs: 480 } as Breakpoints}
         cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 } as Cols}
-        rowHeight={28}
-        margin={[16, 16]}
-        containerPadding={[24, 24]}
+        rowHeight={30}
+        margin={[20, 20]}
+        containerPadding={[32, 32]}
         onLayoutChange={handleLayoutChange}
         onLayoutsChange={onLayoutChange}
         draggableHandle=".widget-header"
