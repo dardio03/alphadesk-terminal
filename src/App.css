@@ -68,7 +68,7 @@ body {
 }
 
 .widget-header {
-  padding: 12px 16px;
+  padding: 0px 0px;
   background-color: var(--widget-bg);
   border-bottom: 1px solid var(--border-color);
   font-weight: 500;

@@ -230,11 +230,11 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
 
   return (
     <div className={`orderbook ${className}`}>
-      {error && <div className="orderbook-error">{error}</div>}
-      <WidgetHeader
+         <WidgetHeader
         title={`Order Book - ${symbol}`}
         settingsContent={renderExchangeSettings()}
       />
+      {error && <div className="orderbook-error">{error}</div>}
       <div className="orderbook-content">
         <div className="orderbook-header">
           <div className="column-headers">

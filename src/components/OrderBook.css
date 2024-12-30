@@ -103,7 +103,7 @@
 }
 
 .orderbook-header {
-  padding: 8px;
+  padding: 0px;
   border-bottom: 1px solid var(--border-color);
   background-color: rgba(255, 255, 255, 0.02);
   flex-shrink: 0;
