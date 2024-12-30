@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Responsive, WidthProvider, ResponsiveProps, Layout } from 'react-grid-layout';
 import OrderBook from './components/OrderBook';
-import LivePrice from './components/LivePrice';
 import PriceRange from './components/PriceRange';
 import TradingViewWidget from './components/TradingViewWidget';
 import WidgetHeader from './components/WidgetHeader';
@@ -98,13 +97,6 @@ const App: React.FC = () => {
         <div key="orderbook" className="widget">
           <div className="widget-content">
             <OrderBook symbol={symbol} />
-          </div>
-        </div>
-
-        <div key="liveprice" className="widget">
-          <WidgetHeader title="Live Price" />
-          <div className="widget-content">
-            <LivePrice symbol={symbol} />
           </div>
         </div>
 
