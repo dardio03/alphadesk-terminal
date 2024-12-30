@@ -80,11 +80,11 @@ const App: React.FC = () => {
       <ResponsiveGridLayout
         className="layout"
         layouts={layouts}
-        breakpoints={{ lg: 1440, md: 1200, sm: 996, xs: 768, xxs: 480 } as Breakpoints}
+        breakpoints={{ lg: 1600, md: 1200, sm: 992, xs: 768, xxs: 480 } as Breakpoints}
         cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 } as Cols}
-        rowHeight={28}
-        margin={[16, 16]}
-        containerPadding={[24, 24]}
+        rowHeight={30}
+        margin={[20, 20]}
+        containerPadding={[32, 32]}
         onLayoutChange={handleLayoutChange}
         onLayoutsChange={onLayoutChange}
         draggableHandle=".widget-header"
