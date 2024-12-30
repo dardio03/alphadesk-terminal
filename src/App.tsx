@@ -43,32 +43,32 @@ const App: React.FC = () => {
     lg: [
       { i: 'orderbook', x: 0, y: 0, w: 3, h: 32, minW: 3, minH: 16 },
       { i: 'liveprice', x: 3, y: 0, w: 5, h: 8, minW: 3, minH: 6 },
-      { i: 'pricerange', x: 8, y: 0, w: 4, h: 8, minW: 3, minH: 6 },
-      { i: 'chart', x: 3, y: 8, w: 9, h: 24, minW: 6, minH: 16 }
+      { i: 'pricerange', x: 3, y: 8, w: 3, h: 8, minW: 3, minH: 6 },
+      { i: 'chart', x: 6, y: 0, w: 6, h: 32, minW: 6, minH: 16 }
     ],
     md: [
       { i: 'orderbook', x: 0, y: 0, w: 4, h: 32, minW: 4, minH: 16 },
-      { i: 'liveprice', x: 4, y: 0, w: 8, h: 8, minW: 4, minH: 6 },
-      { i: 'pricerange', x: 4, y: 8, w: 8, h: 8, minW: 4, minH: 6 },
-      { i: 'chart', x: 4, y: 16, w: 8, h: 16, minW: 6, minH: 12 }
+      { i: 'liveprice', x: 4, y: 0, w: 4, h: 8, minW: 4, minH: 6 },
+      { i: 'pricerange', x: 4, y: 8, w: 4, h: 8, minW: 4, minH: 6 },
+      { i: 'chart', x: 8, y: 0, w: 4, h: 32, minW: 4, minH: 16 }
     ],
     sm: [
-      { i: 'orderbook', x: 0, y: 0, w: 5, h: 32, minW: 4, minH: 16 },
-      { i: 'liveprice', x: 5, y: 0, w: 7, h: 8, minW: 4, minH: 6 },
-      { i: 'pricerange', x: 5, y: 8, w: 7, h: 8, minW: 4, minH: 6 },
-      { i: 'chart', x: 0, y: 32, w: 12, h: 24, minW: 6, minH: 12 }
+      { i: 'orderbook', x: 0, y: 0, w: 6, h: 32, minW: 4, minH: 16 },
+      { i: 'liveprice', x: 6, y: 0, w: 6, h: 8, minW: 4, minH: 6 },
+      { i: 'pricerange', x: 6, y: 8, w: 6, h: 8, minW: 4, minH: 6 },
+      { i: 'chart', x: 6, y: 16, w: 6, h: 32, minW: 4, minH: 16 }
     ],
     xs: [
       { i: 'orderbook', x: 0, y: 0, w: 12, h: 32, minW: 6, minH: 16 },
       { i: 'liveprice', x: 0, y: 32, w: 12, h: 8, minW: 6, minH: 6 },
       { i: 'pricerange', x: 0, y: 40, w: 12, h: 8, minW: 6, minH: 6 },
-      { i: 'chart', x: 0, y: 48, w: 12, h: 24, minW: 6, minH: 12 }
+      { i: 'chart', x: 0, y: 48, w: 12, h: 32, minW: 6, minH: 16 }
     ],
     xxs: [
       { i: 'orderbook', x: 0, y: 0, w: 12, h: 32, minW: 6, minH: 16 },
       { i: 'liveprice', x: 0, y: 32, w: 12, h: 8, minW: 6, minH: 6 },
       { i: 'pricerange', x: 0, y: 40, w: 12, h: 8, minW: 6, minH: 6 },
-      { i: 'chart', x: 0, y: 48, w: 12, h: 24, minW: 6, minH: 12 }
+      { i: 'chart', x: 0, y: 48, w: 12, h: 32, minW: 6, minH: 16 }
     ]
   });
 
