@@ -4,7 +4,7 @@ import useBybitOrderBook from '../hooks/useBybitOrderBook';
 import useCoinbaseOrderBook from '../hooks/useCoinbaseOrderBook';
 import { OrderBookProps, OrderBookEntry } from '../types/exchange';
 import { formatPrice, formatQuantity, calculateSpreadPercentage } from '../utils/formatPrice';
-import WidgetHeader from './WidgetHeader';
+
 import './OrderBook.css';
 
 export const EXCHANGES = {
@@ -230,10 +230,7 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
 
   return (
     <div className={`orderbook ${className}`}>
-         <WidgetHeader
-        title={`Order Book - ${symbol}`}
-        settingsContent={renderExchangeSettings()}
-      />
+
       {error && <div className="orderbook-error">{error}</div>}
       <div className="orderbook-content">
         <div className="orderbook-header">
