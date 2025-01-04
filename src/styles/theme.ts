@@ -57,7 +57,7 @@ export const theme = {
       raised: '#242424',
       overlay: 'rgba(0, 0, 0, 0.8)',
     },
-    // Border colors updated for better visibility
+    // Border colors
     border: {
       light: '#3A3A3A',
       main: '#2A2A2A',
@@ -70,12 +70,6 @@ export const theme = {
       positive: '#00C853',
       negative: '#FF1744',
       volume: '#4527A0',
-    },
-    // Border colors
-    border: {
-      light: '#424242',
-      main: '#323232',
-      dark: '#212121',
     },
   },
 
