@@ -206,8 +206,6 @@ export const mixins = {
 
 // Global styles
 export const GlobalStyle = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Roboto+Mono:wght@400;500&display=swap');
-
   *, *::before, *::after {
     box-sizing: border-box;
     margin: 0;

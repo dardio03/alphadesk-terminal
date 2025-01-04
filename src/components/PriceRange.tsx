@@ -94,7 +94,7 @@ const Bar = styled.div`
   }
 `;
 
-const PriceLabel = styled(Typography).attrs({ variant: 'numeric' })`
+const PriceLabel = styled(Typography).attrs({ $variant: 'numeric' })`
   position: absolute;
   transform: translateX(-50%);
   white-space: nowrap;
@@ -266,14 +266,14 @@ const PriceRange: React.FC<PriceRangeProps> = ({
                 loading="lazy"
               />
               <Tooltip>
-                <Typography variant="body2" weight="semibold">
+                <Typography $variant="body2" $weight="semibold">
                   {exchange.name}
                 </Typography>
-                <Typography variant="numeric" style={{ marginTop: theme.spacing.xs }}>
+                <Typography $variant="numeric" style={{ marginTop: theme.spacing.xs }}>
                   {formatPrice(exchange.price)}
                 </Typography>
                 <Typography
-                  variant="caption"
+                  $variant="caption"
                   style={{
                     marginTop: theme.spacing.xs,
                     color: isUp ? theme.colors.success.main : theme.colors.error.main
@@ -282,8 +282,8 @@ const PriceRange: React.FC<PriceRangeProps> = ({
                   {isUp ? '▲' : '▼'} {formatPrice(priceDiff)} ({percentChange.toFixed(2)}%)
                 </Typography>
                 <Typography
-                  variant="caption"
-                  color={theme.colors.text.secondary}
+                  $variant="caption"
+                  $color={theme.colors.text.secondary}
                   style={{ marginTop: theme.spacing.xs }}
                 >
                   Last updated: {new Date(exchange.timestamp).toLocaleTimeString()}
