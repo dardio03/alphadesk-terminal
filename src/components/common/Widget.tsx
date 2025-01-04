@@ -30,7 +30,7 @@ const WidgetHeader = styled.div`
   border-bottom: 1px solid ${theme.colors.border.main};
 `;
 
-const WidgetTitle = styled(Typography).attrs({ variant: 'h4' })`
+const WidgetTitle = styled(Typography).attrs({ $variant: 'h4' })`
   color: ${theme.colors.text.primary};
 `;
 
@@ -40,7 +40,23 @@ const WidgetContent = styled.div`
   position: relative;
   padding: ${theme.spacing.md};
   
-  ${({ theme }) => theme.mixins.scrollbar}
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${theme.colors.background.default};
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${theme.colors.border.main};
+    border-radius: ${theme.radii.full};
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${theme.colors.border.light};
+  }
 `;
 
 const LoadingOverlay = styled.div`

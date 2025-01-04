@@ -2,14 +2,14 @@ import styled, { css } from 'styled-components';
 import { theme } from '../../styles/theme';
 
 interface TypographyProps {
-  variant?: 'h1' | 'h2' | 'h3' | 'h4' | 'body1' | 'body2' | 'caption' | 'numeric';
-  weight?: keyof typeof theme.typography.fontWeights;
-  color?: string;
-  align?: 'left' | 'center' | 'right';
-  truncate?: boolean;
+  $variant?: 'h1' | 'h2' | 'h3' | 'h4' | 'body1' | 'body2' | 'caption' | 'numeric';
+  $weight?: keyof typeof theme.typography.fontWeights;
+  $color?: string;
+  $align?: 'left' | 'center' | 'right';
+  $truncate?: boolean;
 }
 
-const getVariantStyles = (variant: TypographyProps['variant'] = 'body1') => {
+const getVariantStyles = (variant: TypographyProps['$variant'] = 'body1') => {
   const variants = {
     h1: css`
       font-size: ${theme.typography.fontSizes['4xl']};
@@ -59,13 +59,13 @@ const getVariantStyles = (variant: TypographyProps['variant'] = 'body1') => {
 };
 
 export const Typography = styled.span<TypographyProps>`
-  ${({ variant }) => getVariantStyles(variant)};
-  color: ${({ color }) => color || 'inherit'};
-  font-weight: ${({ weight }) => weight && theme.typography.fontWeights[weight]};
-  text-align: ${({ align = 'left' }) => align};
+  ${({ $variant }) => getVariantStyles($variant)};
+  color: ${({ $color }) => $color || 'inherit'};
+  font-weight: ${({ $weight }) => $weight && theme.typography.fontWeights[$weight]};
+  text-align: ${({ $align = 'left' }) => $align};
   
-  ${({ truncate }) =>
-    truncate &&
+  ${({ $truncate }) =>
+    $truncate &&
     css`
       display: block;
       overflow: hidden;
