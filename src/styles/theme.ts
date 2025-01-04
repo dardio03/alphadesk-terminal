@@ -57,6 +57,12 @@ export const theme = {
       raised: '#242424',
       overlay: 'rgba(0, 0, 0, 0.8)',
     },
+    // Border colors updated for better visibility
+    border: {
+      light: '#3A3A3A',
+      main: '#2A2A2A',
+      dark: '#1A1A1A',
+    },
     // Chart and graph colors
     chart: {
       grid: '#2C2C2C',

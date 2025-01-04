@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Responsive, WidthProvider, ResponsiveProps, Layout } from 'react-grid-layout';
+import styled from 'styled-components';
 import OrderBook from './components/OrderBook';
 import PriceRange from './components/PriceRange';
 import TradingViewWidget from './components/TradingViewWidget';
@@ -7,6 +8,22 @@ import WidgetHeader from './components/WidgetHeader';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import './App.css';
+
+const AppContainer = styled.div`
+  min-height: 100vh;
+  background-color: ${props => props.theme.colors.background.default};
+  color: ${props => props.theme.colors.text.primary};
+  padding: 20px;
+`;
+
+const StyledResponsiveGridLayout = styled(WidthProvider(Responsive))`
+  .react-grid-item {
+    background-color: ${props => props.theme.colors.background.paper};
+    border: 1px solid ${props => props.theme.colors.border.main};
+    border-radius: ${props => props.theme.radii.lg};
+    overflow: hidden;
+  }
+`;
 
 const ResponsiveGridLayout = WidthProvider(Responsive) as React.ComponentType<ResponsiveProps>;
 
@@ -76,46 +93,42 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="app">
-      <ResponsiveGridLayout
+    <AppContainer>
+      <StyledResponsiveGridLayout
         className="layout"
         layouts={layouts}
         breakpoints={{ lg: 1600, md: 1200, sm: 992, xs: 768, xxs: 480 } as Breakpoints}
         cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 } as Cols}
         rowHeight={30}
         margin={[20, 20]}
-        containerPadding={[32, 32]}
+        containerPadding={[20, 20]}
         onLayoutChange={handleLayoutChange}
         onLayoutsChange={onLayoutChange}
         draggableHandle=".widget-header"
+        useCSSTransforms={true}
       >
-        <div key="orderbook" className="widget">
-          <div className="widget-content">
-            <OrderBook symbol={symbol} />
-          </div>
+        <div key="orderbook">
+          <OrderBook symbol={symbol} />
         </div>
 
-        <div key="pricerange" className="widget">
+        <div key="pricerange">
           <PriceRange symbol={symbol} />
         </div>
 
-        <div key="chart" className="widget">
-          <WidgetHeader title="Chart" />
-          <div className="widget-content">
-            <TradingViewWidget
-              symbol={symbol}
-              theme="dark"
-              autosize
-              interval="1"
-              timezone="Etc/UTC"
-              style="1"
-              withdateranges={false}
-              hide_side_toolbar={true}
-            />
-          </div>
+        <div key="chart">
+          <TradingViewWidget
+            symbol={symbol}
+            theme="dark"
+            autosize
+            interval="1"
+            timezone="Etc/UTC"
+            style="1"
+            withdateranges={false}
+            hide_side_toolbar={true}
+          />
         </div>
-      </ResponsiveGridLayout>
-    </div>
+      </StyledResponsiveGridLayout>
+    </AppContainer>
   );
 };
 
