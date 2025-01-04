@@ -17,8 +17,9 @@ const WidgetContainer = styled(Card)`
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 200px;
   overflow: hidden;
+  background-color: ${theme.colors.background.paper};
+  border: 1px solid ${theme.colors.border.main};
 `;
 
 const WidgetHeader = styled.div`

@@ -96,10 +96,7 @@ const App: React.FC = () => {
         </div>
 
         <div key="pricerange" className="widget">
-          <WidgetHeader title="Price Range" />
-          <div className="widget-content">
-            <PriceRange symbol={symbol} />
-          </div>
+          <PriceRange symbol={symbol} />
         </div>
 
         <div key="chart" className="widget">

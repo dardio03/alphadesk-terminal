@@ -52,8 +52,8 @@ export const theme = {
     },
     // Background colors
     background: {
-      default: '#121212',
-      paper: '#1E1E1E',
+      default: '#0A0A0A',
+      paper: '#1A1A1A',
       raised: '#242424',
       overlay: 'rgba(0, 0, 0, 0.8)',
     },
