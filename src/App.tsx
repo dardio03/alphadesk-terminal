@@ -8,6 +8,12 @@ import styled from 'styled-components';
 import OrderBook from './components/OrderBook';
 import PriceRange from './components/PriceRange';
 import TradingViewWidget from './components/TradingViewWidget';
+import LastTrades from './components/LastTrades';
+import Watchlist from './components/Watchlist';
+import BidAskRange from './components/BidAskRange';
+import Alerts from './components/Alerts';
+import OrderBookDepth from './components/OrderBookDepth';
+import Orders from './components/Orders';
 import { MuiWidget } from './components/common/MuiWidget';
 import { theme } from './styles/theme';
 import { muiTheme } from './styles/muiTheme';
@@ -62,32 +68,37 @@ type Cols = { [key in Breakpoint]: number };
 
 const App: React.FC = () => {
   const [symbol] = useState('BTCUSDT');
+  // Convert pixel sizes to grid units (assuming 30px row height and 12 columns)
+  const pxToGridUnits = (px: number, isHeight: boolean = false) => {
+    if (isHeight) {
+      return Math.ceil(px / 30); // Row height is 30px
+    }
+    return Math.round((px / 1685) * 12); // Total width is 1685px (1015 + 335 + 335)
+  };
+
   const [layouts, setLayouts] = useState<Layouts>({
     lg: [
-      { i: 'orderbook', x: 0, y: 0, w: 3, h: 32, minW: 3, minH: 16 },
-      { i: 'pricerange', x: 3, y: 8, w: 3, h: 8, minW: 3, minH: 6 },
-      { i: 'chart', x: 6, y: 0, w: 6, h: 32, minW: 6, minH: 16 }
+      // Main chart (1015 x 620 px)
+      { i: 'chart', x: 0, y: 0, w: pxToGridUnits(1015), h: pxToGridUnits(620, true), static: true },
+      
+      // Order book and trades section (335 x 620 px)
+      { i: 'orderbook', x: pxToGridUnits(1015), y: 0, w: pxToGridUnits(335), h: pxToGridUnits(310, true), static: true },
+      { i: 'lastTrades', x: pxToGridUnits(1015), y: pxToGridUnits(310, true), w: pxToGridUnits(335), h: pxToGridUnits(310, true), static: true },
+      
+      // Right column widgets (335 x 245 px each)
+      { i: 'watchlist', x: pxToGridUnits(1350), y: 0, w: pxToGridUnits(335), h: pxToGridUnits(245, true), static: true },
+      { i: 'bidAskRange', x: pxToGridUnits(1350), y: pxToGridUnits(245, true), w: pxToGridUnits(335), h: pxToGridUnits(245, true), static: true },
+      { i: 'alerts', x: pxToGridUnits(1350), y: pxToGridUnits(490, true), w: pxToGridUnits(335), h: pxToGridUnits(245, true), static: true },
+      { i: 'orderBookDepth', x: pxToGridUnits(1350), y: pxToGridUnits(735, true), w: pxToGridUnits(335), h: pxToGridUnits(245, true), static: true },
+      { i: 'orders', x: pxToGridUnits(1350), y: pxToGridUnits(980, true), w: pxToGridUnits(335), h: pxToGridUnits(245, true), static: true },
+      
+      // Price range (335 x 95 px)
+      { i: 'pricerange', x: pxToGridUnits(1015), y: pxToGridUnits(620, true), w: pxToGridUnits(335), h: pxToGridUnits(95, true), static: true }
     ],
-    md: [
-      { i: 'orderbook', x: 0, y: 0, w: 4, h: 32, minW: 4, minH: 16 },
-      { i: 'pricerange', x: 4, y: 8, w: 4, h: 8, minW: 4, minH: 6 },
-      { i: 'chart', x: 8, y: 0, w: 4, h: 18, minW: 4, minH: 16 }
-    ],
-    sm: [
-      { i: 'orderbook', x: 0, y: 0, w: 6, h: 32, minW: 4, minH: 16 },
-      { i: 'pricerange', x: 6, y: 8, w: 6, h: 8, minW: 4, minH: 6 },
-      { i: 'chart', x: 6, y: 16, w: 6, h: 18, minW: 4, minH: 16 }
-    ],
-    xs: [
-      { i: 'orderbook', x: 0, y: 0, w: 12, h: 32, minW: 6, minH: 16 },
-      { i: 'pricerange', x: 0, y: 40, w: 12, h: 8, minW: 6, minH: 6 },
-      { i: 'chart', x: 0, y: 48, w: 12, h: 18, minW: 6, minH: 16 }
-    ],
-    xxs: [
-      { i: 'orderbook', x: 0, y: 0, w: 12, h: 32, minW: 6, minH: 16 },
-      { i: 'pricerange', x: 0, y: 40, w: 12, h: 8, minW: 6, minH: 6 },
-      { i: 'chart', x: 0, y: 48, w: 12, h: 18, minW: 6, minH: 16 }
-    ]
+    md: [], // We'll make it responsive later
+    sm: [],
+    xs: [],
+    xxs: []
   });
 
   const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
@@ -115,18 +126,6 @@ const App: React.FC = () => {
             draggableHandle=".widget-header"
             useCSSTransforms={true}
           >
-            <div key="orderbook">
-              <MuiWidget title="Order Book">
-                <OrderBook symbol={symbol} />
-              </MuiWidget>
-            </div>
-
-            <div key="pricerange">
-              <MuiWidget title="Price Range">
-                <PriceRange symbol={symbol} />
-              </MuiWidget>
-            </div>
-
             <div key="chart">
               <MuiWidget title="Chart">
                 <TradingViewWidget
@@ -139,6 +138,54 @@ const App: React.FC = () => {
                   withdateranges={false}
                   hide_side_toolbar={true}
                 />
+              </MuiWidget>
+            </div>
+
+            <div key="orderbook">
+              <MuiWidget title="Order Book">
+                <OrderBook symbol={symbol} />
+              </MuiWidget>
+            </div>
+
+            <div key="lastTrades">
+              <MuiWidget title="Last Trades">
+                <LastTrades symbol={symbol} />
+              </MuiWidget>
+            </div>
+
+            <div key="watchlist">
+              <MuiWidget title="Watchlist">
+                <Watchlist />
+              </MuiWidget>
+            </div>
+
+            <div key="bidAskRange">
+              <MuiWidget title="Bid/Ask Range">
+                <BidAskRange symbol={symbol} />
+              </MuiWidget>
+            </div>
+
+            <div key="alerts">
+              <MuiWidget title="Alerts">
+                <Alerts />
+              </MuiWidget>
+            </div>
+
+            <div key="orderBookDepth">
+              <MuiWidget title="Order Book Depth">
+                <OrderBookDepth symbol={symbol} />
+              </MuiWidget>
+            </div>
+
+            <div key="orders">
+              <MuiWidget title="Orders">
+                <Orders />
+              </MuiWidget>
+            </div>
+
+            <div key="pricerange">
+              <MuiWidget title="Price Range">
+                <PriceRange symbol={symbol} />
               </MuiWidget>
             </div>
           </StyledResponsiveGridLayout>
