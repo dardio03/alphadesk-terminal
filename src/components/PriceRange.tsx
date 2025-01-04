@@ -58,21 +58,40 @@ const Container = styled.div<ContainerProps>`
   padding: ${theme.spacing.md};
   user-select: none;
   background-color: ${theme.colors.background.paper};
+  border: 1px solid ${theme.colors.border.main};
+  border-radius: ${theme.radii.md};
+  margin: ${theme.spacing.md} 0;
 `;
 
 const Bar = styled.div`
   position: absolute;
   top: 50%;
+  left: ${theme.spacing.md};
+  right: ${theme.spacing.md};
   transform: translateY(-50%);
-  width: 100%;
   height: 4px;
   background: linear-gradient(
     90deg,
-    ${theme.colors.primary.main}20,
-    ${theme.colors.primary.main}40
+    ${theme.colors.primary.main}40,
+    ${theme.colors.primary.main}80
   );
   border-radius: ${theme.radii.sm};
-  box-shadow: ${theme.shadows.sm};
+  box-shadow: ${theme.shadows.md};
+  &::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    background: linear-gradient(
+      90deg,
+      ${theme.colors.primary.main}10,
+      ${theme.colors.primary.main}20
+    );
+    border-radius: inherit;
+    z-index: -1;
+  }
 `;
 
 const PriceLabel = styled(Typography).attrs({ variant: 'numeric' })`
