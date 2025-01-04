@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { formatPrice } from '../utils/formatPrice';
+import { Typography, Widget } from './common';
+import { theme } from '../styles/theme';
 
 interface ExchangeData {
   id: string;
@@ -53,7 +55,7 @@ const Container = styled.div<ContainerProps>`
   position: relative;
   width: ${(props: ContainerProps) => props.width ? `${props.width}px` : '100%'};
   height: 60px;
-  margin: 20px 0;
+  margin: ${theme.spacing.md} 0;
   user-select: none;
 `;
 
@@ -65,21 +67,19 @@ const Bar = styled.div`
   height: 4px;
   background: linear-gradient(
     90deg,
-    rgba(33, 150, 243, 0.1),
-    rgba(33, 150, 243, 0.3)
+    ${theme.colors.primary.main}20,
+    ${theme.colors.primary.main}40
   );
-  border-radius: 2px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: ${theme.radii.sm};
+  box-shadow: ${theme.shadows.sm};
 `;
 
-const PriceLabel = styled.div`
+const PriceLabel = styled(Typography).attrs({ variant: 'numeric' })`
   position: absolute;
-  font-size: 12px;
-  color: #666;
   transform: translateX(-50%);
   white-space: nowrap;
-  font-family: monospace;
   bottom: 0;
+  color: ${theme.colors.text.secondary};
 `;
 
 interface ExchangeIconProps {
@@ -94,24 +94,26 @@ const ExchangeIcon = styled.div<ExchangeIconProps>`
   transform: translate(-50%, -50%);
   width: 28px;
   height: 28px;
-  border-radius: 50%;
-  background-color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  border-radius: ${theme.radii.full};
+  background-color: ${theme.colors.background.paper};
+  box-shadow: ${theme.shadows.md};
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 2px solid ${(props: ExchangeIconProps) => props.isUp ? '#4caf50' : '#f44336'};
+  transition: all ${theme.transitions.normal};
+  border: 2px solid ${(props: ExchangeIconProps) => 
+    props.isUp ? theme.colors.success.main : theme.colors.error.main};
   animation: ${slideIn} 0.3s ease-out;
-  z-index: 2;
+  z-index: ${theme.zIndices.base};
 
   &:hover {
     transform: translate(-50%, -50%) scale(1.15);
-    z-index: 3;
+    z-index: ${theme.zIndices.tooltip};
+    box-shadow: ${theme.shadows.lg};
   }
 
   img {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
+    border-radius: ${theme.radii.full};
     object-fit: cover;
   }
 `;
@@ -121,16 +123,16 @@ const Tooltip = styled.div`
   bottom: 120%;
   left: 50%;
   transform: translateX(-50%);
-  padding: 8px 12px;
-  background-color: #333;
-  color: white;
-  border-radius: 4px;
-  font-size: 12px;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background-color: ${theme.colors.background.raised};
+  color: ${theme.colors.text.primary};
+  border-radius: ${theme.radii.md};
+  font-size: ${theme.typography.fontSizes.sm};
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: opacity ${theme.transitions.fast};
+  box-shadow: ${theme.shadows.lg};
 
   ${ExchangeIcon}:hover & {
     opacity: 1;
@@ -143,7 +145,7 @@ const Tooltip = styled.div`
     left: 50%;
     transform: translateX(-50%);
     border: 6px solid transparent;
-    border-top-color: #333;
+    border-top-color: ${theme.colors.background.raised};
   }
 `;
 
@@ -210,46 +212,68 @@ const PriceRange: React.FC<PriceRangeProps> = ({
   }
 
   return (
-    <Container ref={containerRef} width={width}>
-      <Bar />
-      <PriceLabel style={{ left: '0%' }}>
-        {formatPrice(minPrice)}
-      </PriceLabel>
-      <PriceLabel style={{ left: '100%' }}>
-        {formatPrice(maxPrice)}
-      </PriceLabel>
+    <Widget
+      title={`Price Range - ${symbol}`}
+      loading={loading}
+      error={error}
+    >
+      <Container ref={containerRef} width={width}>
+        <Bar />
+        <PriceLabel style={{ left: '0%' }}>
+          {formatPrice(minPrice)}
+        </PriceLabel>
+        <PriceLabel style={{ left: '100%' }}>
+          {formatPrice(maxPrice)}
+        </PriceLabel>
 
-      {exchanges.map((exchange) => {
-        const position = calculatePosition(exchange.price);
-        const previousPrice = previousPrices[exchange.id] || exchange.price;
-        const isUp = exchange.price >= previousPrice;
+        {exchanges.map((exchange) => {
+          const position = calculatePosition(exchange.price);
+          const previousPrice = previousPrices[exchange.id] || exchange.price;
+          const isUp = exchange.price >= previousPrice;
+          const priceDiff = Math.abs(exchange.price - previousPrice);
+          const percentChange = (priceDiff / previousPrice) * 100;
 
-        return (
-          <ExchangeIcon
-            key={exchange.id}
-            position={position}
-            isUp={isUp}
-            data-testid={`exchange-icon-${exchange.id}`}
-          >
-            <img
-              src={exchange.icon}
-              alt={`${exchange.name} icon`}
-              loading="lazy"
-            />
-            <Tooltip>
-              <div>{exchange.name}</div>
-              <div>{formatPrice(exchange.price)}</div>
-              <div style={{ 
-                color: isUp ? '#4caf50' : '#f44336',
-                fontSize: '10px'
-              }}>
-                {isUp ? '▲' : '▼'} {formatPrice(Math.abs(exchange.price - previousPrice))}
-              </div>
-            </Tooltip>
-          </ExchangeIcon>
-        );
-      })}
-    </Container>
+          return (
+            <ExchangeIcon
+              key={exchange.id}
+              position={position}
+              isUp={isUp}
+              data-testid={`exchange-icon-${exchange.id}`}
+            >
+              <img
+                src={exchange.icon}
+                alt={`${exchange.name} icon`}
+                loading="lazy"
+              />
+              <Tooltip>
+                <Typography variant="body2" weight="semibold">
+                  {exchange.name}
+                </Typography>
+                <Typography variant="numeric" style={{ marginTop: theme.spacing.xs }}>
+                  {formatPrice(exchange.price)}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  style={{
+                    marginTop: theme.spacing.xs,
+                    color: isUp ? theme.colors.success.main : theme.colors.error.main
+                  }}
+                >
+                  {isUp ? '▲' : '▼'} {formatPrice(priceDiff)} ({percentChange.toFixed(2)}%)
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color={theme.colors.text.secondary}
+                  style={{ marginTop: theme.spacing.xs }}
+                >
+                  Last updated: {new Date(exchange.timestamp).toLocaleTimeString()}
+                </Typography>
+              </Tooltip>
+            </ExchangeIcon>
+          );
+        })}
+      </Container>
+    </Widget>
   );
 };
 
