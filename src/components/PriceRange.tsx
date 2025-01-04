@@ -55,8 +55,9 @@ const Container = styled.div<ContainerProps>`
   position: relative;
   width: ${(props: ContainerProps) => props.width ? `${props.width}px` : '100%'};
   height: 60px;
-  margin: ${theme.spacing.md} 0;
+  padding: ${theme.spacing.md};
   user-select: none;
+  background-color: ${theme.colors.background.paper};
 `;
 
 const Bar = styled.div`
