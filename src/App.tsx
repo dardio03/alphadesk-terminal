@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
+import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
+import { ThemeProvider as StyledThemeProvider } from 'styled-components';
+import { Box, Paper, IconButton } from '@mui/material';
+import { DragHandle, Close, Settings } from '@mui/icons-material';
 import { Responsive, WidthProvider, ResponsiveProps, Layout } from 'react-grid-layout';
 import styled from 'styled-components';
 import OrderBook from './components/OrderBook';
 import PriceRange from './components/PriceRange';
 import TradingViewWidget from './components/TradingViewWidget';
-import WidgetHeader from './components/WidgetHeader';
+import { MuiWidget } from './components/common/MuiWidget';
+import { theme } from './styles/theme';
+import { muiTheme } from './styles/muiTheme';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import './App.css';
@@ -93,42 +99,52 @@ const App: React.FC = () => {
   };
 
   return (
-    <AppContainer>
-      <StyledResponsiveGridLayout
-        className="layout"
-        layouts={layouts}
-        breakpoints={{ lg: 1600, md: 1200, sm: 992, xs: 768, xxs: 480 } as Breakpoints}
-        cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 } as Cols}
-        rowHeight={30}
-        margin={[20, 20]}
-        containerPadding={[20, 20]}
-        onLayoutChange={handleLayoutChange}
-        onLayoutsChange={onLayoutChange}
-        draggableHandle=".widget-header"
-        useCSSTransforms={true}
-      >
-        <div key="orderbook">
-          <OrderBook symbol={symbol} />
-        </div>
+    <MuiThemeProvider theme={muiTheme}>
+      <StyledThemeProvider theme={theme}>
+        <AppContainer>
+          <StyledResponsiveGridLayout
+            className="layout"
+            layouts={layouts}
+            breakpoints={{ lg: 1600, md: 1200, sm: 992, xs: 768, xxs: 480 } as Breakpoints}
+            cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 } as Cols}
+            rowHeight={30}
+            margin={[20, 20]}
+            containerPadding={[20, 20]}
+            onLayoutChange={handleLayoutChange}
+            onLayoutsChange={onLayoutChange}
+            draggableHandle=".widget-header"
+            useCSSTransforms={true}
+          >
+            <div key="orderbook">
+              <MuiWidget title="Order Book">
+                <OrderBook symbol={symbol} />
+              </MuiWidget>
+            </div>
 
-        <div key="pricerange">
-          <PriceRange symbol={symbol} />
-        </div>
+            <div key="pricerange">
+              <MuiWidget title="Price Range">
+                <PriceRange symbol={symbol} />
+              </MuiWidget>
+            </div>
 
-        <div key="chart">
-          <TradingViewWidget
-            symbol={symbol}
-            theme="dark"
-            autosize
-            interval="1"
-            timezone="Etc/UTC"
-            style="1"
-            withdateranges={false}
-            hide_side_toolbar={true}
-          />
-        </div>
-      </StyledResponsiveGridLayout>
-    </AppContainer>
+            <div key="chart">
+              <MuiWidget title="Chart">
+                <TradingViewWidget
+                  symbol={symbol}
+                  theme="dark"
+                  autosize
+                  interval="1"
+                  timezone="Etc/UTC"
+                  style="1"
+                  withdateranges={false}
+                  hide_side_toolbar={true}
+                />
+              </MuiWidget>
+            </div>
+          </StyledResponsiveGridLayout>
+        </AppContainer>
+      </StyledThemeProvider>
+    </MuiThemeProvider>
   );
 };
 
