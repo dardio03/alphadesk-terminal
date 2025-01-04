@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { Card } from './Card';
 import { Typography } from './Typography';
+import { Spinner } from './Loading';
 import { theme } from '../../styles/theme';
 
 interface WidgetProps {
@@ -60,15 +61,20 @@ const WidgetContent = styled.div`
 `;
 
 const LoadingOverlay = styled.div`
-  ${({ theme }) => theme.mixins.absoluteCenter};
-  ${({ theme }) => theme.mixins.flexCenter};
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background-color: ${theme.colors.background.overlay};
   width: 100%;
   height: 100%;
   z-index: ${theme.zIndices.modal};
 `;
 
-const ErrorMessage = styled(Typography).attrs({ variant: 'body2' })`
+const ErrorMessage = styled(Typography).attrs({ $variant: 'body2' })`
   color: ${theme.colors.error.main};
   text-align: center;
   padding: ${theme.spacing.md};
@@ -96,7 +102,7 @@ export const Widget: React.FC<WidgetProps> = ({
       <WidgetContent>
         {loading && (
           <LoadingOverlay>
-            {/* Add loading spinner component here */}
+            <Spinner size="lg" color={theme.colors.primary.main} />
           </LoadingOverlay>
         )}
         
