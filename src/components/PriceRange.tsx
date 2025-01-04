@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import styled, { keyframes, css } from 'styled-components';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import styled, { keyframes } from 'styled-components';
 import { formatPrice } from '../utils/formatPrice';
 
 interface ExchangeData {
@@ -11,11 +11,28 @@ interface ExchangeData {
 }
 
 interface PriceRangeProps {
-  exchanges: ExchangeData[];
   symbol: string;
   interval?: string;
   width?: number;
 }
+
+// Mock exchange data for development
+const mockExchanges: ExchangeData[] = [
+  {
+    id: 'binance',
+    name: 'Binance',
+    price: 42500.25,
+    icon: 'https://assets.coingecko.com/markets/images/52/small/binance.jpg?1519353250',
+    timestamp: Date.now()
+  },
+  {
+    id: 'coinbase',
+    name: 'Coinbase',
+    price: 42550.50,
+    icon: 'https://assets.coingecko.com/markets/images/23/small/Coinbase_Coin.png?1519353250',
+    timestamp: Date.now()
+  }
+];
 
 const slideIn = keyframes`
   from {
@@ -28,9 +45,13 @@ const slideIn = keyframes`
   }
 `;
 
-const Container = styled.div<{ width?: number }>`
+interface ContainerProps {
+  width?: number;
+}
+
+const Container = styled.div<ContainerProps>`
   position: relative;
-  width: ${props => props.width ? `${props.width}px` : '100%'};
+  width: ${(props: ContainerProps) => props.width ? `${props.width}px` : '100%'};
   height: 60px;
   margin: 20px 0;
   user-select: none;
@@ -61,9 +82,14 @@ const PriceLabel = styled.div`
   bottom: 0;
 `;
 
-const ExchangeIcon = styled.div<{ position: number; isUp: boolean }>`
+interface ExchangeIconProps {
+  position: number;
+  isUp: boolean;
+}
+
+const ExchangeIcon = styled.div<ExchangeIconProps>`
   position: absolute;
-  left: ${props => props.position}%;
+  left: ${(props: ExchangeIconProps) => props.position}%;
   top: 50%;
   transform: translate(-50%, -50%);
   width: 28px;
@@ -73,7 +99,7 @@ const ExchangeIcon = styled.div<{ position: number; isUp: boolean }>`
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 2px solid ${props => props.isUp ? '#4caf50' : '#f44336'};
+  border: 2px solid ${(props: ExchangeIconProps) => props.isUp ? '#4caf50' : '#f44336'};
   animation: ${slideIn} 0.3s ease-out;
   z-index: 2;
 
@@ -122,15 +148,17 @@ const Tooltip = styled.div`
 `;
 
 const PriceRange: React.FC<PriceRangeProps> = ({
-  exchanges,
   symbol,
   interval = '1d',
   width = 800
 }) => {
   const [previousPrices, setPreviousPrices] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Using mock data for development
+  const exchanges = mockExchanges;
 
   const { minPrice, maxPrice } = useMemo(() => {
     const prices = exchanges.map(e => e.price);
