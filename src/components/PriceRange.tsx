@@ -1,150 +1,227 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { PriceRangeProps } from '../types/exchange';
+import styled, { keyframes, css } from 'styled-components';
 import { formatPrice } from '../utils/formatPrice';
 
-interface PricePoint {
+interface ExchangeData {
+  id: string;
+  name: string;
   price: number;
+  icon: string;
   timestamp: number;
 }
 
-interface PriceRange {
-  high: PricePoint;
-  low: PricePoint;
-  current: PricePoint;
-  open: PricePoint;
+interface PriceRangeProps {
+  exchanges: ExchangeData[];
+  symbol: string;
+  interval?: string;
+  width?: number;
 }
 
+const slideIn = keyframes`
+  from {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+`;
+
+const Container = styled.div<{ width?: number }>`
+  position: relative;
+  width: ${props => props.width ? `${props.width}px` : '100%'};
+  height: 60px;
+  margin: 20px 0;
+  user-select: none;
+`;
+
+const Bar = styled.div`
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(33, 150, 243, 0.1),
+    rgba(33, 150, 243, 0.3)
+  );
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+`;
+
+const PriceLabel = styled.div`
+  position: absolute;
+  font-size: 12px;
+  color: #666;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: monospace;
+  bottom: 0;
+`;
+
+const ExchangeIcon = styled.div<{ position: number; isUp: boolean }>`
+  position: absolute;
+  left: ${props => props.position}%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid ${props => props.isUp ? '#4caf50' : '#f44336'};
+  animation: ${slideIn} 0.3s ease-out;
+  z-index: 2;
+
+  &:hover {
+    transform: translate(-50%, -50%) scale(1.15);
+    z-index: 3;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+`;
+
+const Tooltip = styled.div`
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  background-color: #333;
+  color: white;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  ${ExchangeIcon}:hover & {
+    opacity: 1;
+  }
+
+  &:after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #333;
+  }
+`;
+
 const PriceRange: React.FC<PriceRangeProps> = ({
+  exchanges,
   symbol,
   interval = '1d',
-  height = 100
+  width = 800
 }) => {
-  const [priceRange, setPriceRange] = useState<PriceRange | null>(null);
+  const [previousPrices, setPreviousPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const fetchPriceRange = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(
-        `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1`
-      );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch price range');
-      }
-
-      const data = await response.json();
-      const [
-        openTime,
-        open,
-        high,
-        low,
-        close
-      ] = data[0];
-
-      setPriceRange({
-        high: { price: parseFloat(high), timestamp: openTime },
-        low: { price: parseFloat(low), timestamp: openTime },
-        current: { price: parseFloat(close), timestamp: Date.now() },
-        open: { price: parseFloat(open), timestamp: openTime }
-      });
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch price range');
-    } finally {
-      setLoading(false);
-    }
-  }, [symbol, interval]);
-
-  const drawPriceRange = useCallback(() => {
-    if (!canvasRef.current || !priceRange) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const { high, low, current, open } = priceRange;
-    const range = high.price - low.price;
-    const padding = range * 0.1; // 10% padding
-    const scaledHigh = high.price + padding;
-    const scaledLow = low.price - padding;
-    const scaledRange = scaledHigh - scaledLow;
-
-    // Calculate positions
-    const getY = (price: number) => {
-      return canvas.height - ((price - scaledLow) / scaledRange * canvas.height);
+  const { minPrice, maxPrice } = useMemo(() => {
+    const prices = exchanges.map(e => e.price);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const padding = (max - min) * 0.1;
+    return {
+      minPrice: min - padding,
+      maxPrice: max + padding
     };
+  }, [exchanges]);
 
-    // Draw background
-    ctx.fillStyle = '#f5f5f5';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw price range line
-    ctx.beginPath();
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 2;
-    ctx.moveTo(canvas.width / 2, getY(high.price));
-    ctx.lineTo(canvas.width / 2, getY(low.price));
-    ctx.stroke();
-
-    // Draw current price marker
-    const currentY = getY(current.price);
-    ctx.beginPath();
-    ctx.fillStyle = current.price >= open.price ? '#4caf50' : '#f44336';
-    ctx.arc(canvas.width / 2, currentY, 4, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Draw price labels
-    ctx.font = '12px Arial';
-    ctx.fillStyle = '#333';
-    ctx.textAlign = 'left';
-    ctx.fillText(formatPrice(high.price), canvas.width / 2 + 10, getY(high.price));
-    ctx.fillText(formatPrice(low.price), canvas.width / 2 + 10, getY(low.price));
-    ctx.fillText(formatPrice(current.price), canvas.width / 2 + 10, currentY);
-
-  }, [priceRange]);
+  const calculatePosition = useCallback((price: number): number => {
+    const range = maxPrice - minPrice;
+    return ((price - minPrice) / range) * 100;
+  }, [minPrice, maxPrice]);
 
   useEffect(() => {
-    fetchPriceRange();
-    const interval = setInterval(fetchPriceRange, 5000);
-    return () => clearInterval(interval);
-  }, [fetchPriceRange]);
+    // Update previous prices for price change indication
+    setPreviousPrices(prev => {
+      const next = { ...prev };
+      exchanges.forEach(exchange => {
+        if (!prev[exchange.id]) {
+          next[exchange.id] = exchange.price;
+        }
+      });
+      return next;
+    });
 
-  useEffect(() => {
-    drawPriceRange();
-  }, [drawPriceRange]);
+    // After a delay, update previous prices to current
+    const timer = setTimeout(() => {
+      setPreviousPrices(
+        exchanges.reduce((acc, exchange) => ({
+          ...acc,
+          [exchange.id]: exchange.price
+        }), {})
+      );
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [exchanges]);
 
   if (loading) {
-    return <div className="price-range-loading">Loading...</div>;
+    return <div>Loading price range...</div>;
   }
 
   if (error) {
-    return <div className="price-range-error">{error}</div>;
+    return <div>Error: {error}</div>;
   }
 
   return (
-    <div className="price-range">
-      <canvas
-        ref={canvasRef}
-        width={50}
-        height={height}
-        style={{ width: '50px', height: `${height}px` }}
-      />
-      {priceRange && (
-        <div className="price-range-stats">
-          <div className="stat high">H: {formatPrice(priceRange.high.price)}</div>
-          <div className="stat low">L: {formatPrice(priceRange.low.price)}</div>
-          <div className={`stat current ${priceRange.current.price >= priceRange.open.price ? 'up' : 'down'}`}>
-            C: {formatPrice(priceRange.current.price)}
-          </div>
-        </div>
-      )}
-    </div>
+    <Container ref={containerRef} width={width}>
+      <Bar />
+      <PriceLabel style={{ left: '0%' }}>
+        {formatPrice(minPrice)}
+      </PriceLabel>
+      <PriceLabel style={{ left: '100%' }}>
+        {formatPrice(maxPrice)}
+      </PriceLabel>
+
+      {exchanges.map((exchange) => {
+        const position = calculatePosition(exchange.price);
+        const previousPrice = previousPrices[exchange.id] || exchange.price;
+        const isUp = exchange.price >= previousPrice;
+
+        return (
+          <ExchangeIcon
+            key={exchange.id}
+            position={position}
+            isUp={isUp}
+            data-testid={`exchange-icon-${exchange.id}`}
+          >
+            <img
+              src={exchange.icon}
+              alt={`${exchange.name} icon`}
+              loading="lazy"
+            />
+            <Tooltip>
+              <div>{exchange.name}</div>
+              <div>{formatPrice(exchange.price)}</div>
+              <div style={{ 
+                color: isUp ? '#4caf50' : '#f44336',
+                fontSize: '10px'
+              }}>
+                {isUp ? '▲' : '▼'} {formatPrice(Math.abs(exchange.price - previousPrice))}
+              </div>
+            </Tooltip>
+          </ExchangeIcon>
+        );
+      })}
+    </Container>
   );
 };
 
