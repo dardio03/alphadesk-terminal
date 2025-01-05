@@ -3,10 +3,6 @@ import styled, { keyframes } from 'styled-components';
 import { formatPrice } from '../utils/formatPrice';
 import { Typography, Widget } from './common';
 import { theme } from '../styles/theme';
-import useBinanceOrderBook from '../hooks/useBinanceOrderBook';
-import useBybitOrderBook from '../hooks/useBybitOrderBook';
-import useCoinbaseOrderBook from '../hooks/useCoinbaseOrderBook';
-import useKrakenOrderBook from '../hooks/useKrakenOrderBook';
 
 interface ExchangeData {
   id: string;

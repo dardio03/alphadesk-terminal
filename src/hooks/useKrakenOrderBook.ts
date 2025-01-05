@@ -93,11 +93,13 @@ const useKrakenOrderBook = (symbol: string) => {
   }, []);
 
   // Initialize WebSocket connection
-  const { connectionState, error, reconnect } = useWebSocket(
-    'wss://ws.kraken.com',
-    subscribeMessage,
-    processMessage
-  );
+  const { connectionState, error, reconnect, sendMessage } = useWebSocket({
+    url: 'wss://ws.kraken.com',
+    onMessage: processMessage,
+    onConnected: () => {
+      sendMessage(subscribeMessage);
+    }
+  });
 
   return {
     orderBook,
