@@ -18,7 +18,8 @@ import {
   Save as SaveIcon,
   FolderOpen as LoadIcon,
   Delete as DeleteIcon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 
 interface Layout {

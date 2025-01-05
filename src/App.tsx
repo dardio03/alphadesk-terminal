@@ -173,7 +173,9 @@ const App: React.FC = () => {
 
   const handleLoadLayout = (layout: SavedLayout) => {
     // Force a reset of the grid before applying the new layout
-    setLayouts({});
+    setLayouts({
+      lg: [], md: [], sm: [], xs: [], xxs: []
+    });
     // Use setTimeout to ensure the reset is processed before setting new layout
     setTimeout(() => {
       setLayouts(layout.data.layouts);
@@ -216,7 +218,6 @@ const App: React.FC = () => {
             onLayoutChange={handleLayoutChange}
             onLayoutsChange={onLayoutChange}
             draggableHandle=".widget-header"
-            measureBeforeMount={true}
             useCSSTransforms={true}
             key={JSON.stringify(layouts)} // Force remount when layouts change
           >
