@@ -13,6 +13,7 @@ interface UseWebSocketResult {
   connectionState: ConnectionState;
   sendMessage: (message: any) => void;
   reconnect: () => void;
+  error: string | null;
 }
 
 const INITIAL_RETRY_DELAY = 1000;
@@ -28,6 +29,7 @@ export const useWebSocket = ({
   onDisconnected
 }: UseWebSocketProps): UseWebSocketResult => {
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
+  const [error, setError] = useState<string | null>(null);
   const ws = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
   const retryCount = useRef<number>(0);
@@ -169,7 +171,8 @@ export const useWebSocket = ({
   return {
     connectionState,
     sendMessage,
-    reconnect
+    reconnect,
+    error
   };
 };
 
