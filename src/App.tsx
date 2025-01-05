@@ -154,14 +154,34 @@ const App: React.FC = () => {
   const [layouts, setLayouts] = useState<Layouts>(defaultLayout);
 
   const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
-    setLayouts(allLayouts as Layouts);
+    console.log('Layout changed:', JSON.stringify(allLayouts, null, 2));
+    // Ensure we have all breakpoints
+    const newLayouts = {
+      lg: allLayouts.lg || [],
+      md: allLayouts.md || [],
+      sm: allLayouts.sm || [],
+      xs: allLayouts.xs || [],
+      xxs: allLayouts.xxs || []
+    };
+    setLayouts(newLayouts);
   };
 
   const handleSaveLayout = (layout: { name: string; timestamp: number }) => {
+    // Get the current layout state and ensure all breakpoints exist
+    const layoutToSave = {
+      lg: layouts.lg || defaultLayout.lg,
+      md: layouts.md || defaultLayout.md,
+      sm: layouts.sm || defaultLayout.sm,
+      xs: layouts.xs || defaultLayout.xs,
+      xxs: layouts.xxs || defaultLayout.xxs
+    };
+
+    console.log('Saving layout:', JSON.stringify(layoutToSave, null, 2));
+
     const newLayout: SavedLayout = {
       ...layout,
       data: {
-        layouts,
+        layouts: layoutToSave,
         symbol,
       }
     };
@@ -172,8 +192,27 @@ const App: React.FC = () => {
   };
 
   const handleLoadLayout = (layout: SavedLayout) => {
-    // Apply saved layout
-    setLayouts(layout.data.layouts);
+    console.log('Loading layout:', JSON.stringify(layout.data.layouts, null, 2));
+    
+    // Ensure the loaded layout has all breakpoints with valid arrays
+    const layoutToLoad = {
+      lg: Array.isArray(layout.data.layouts.lg) ? layout.data.layouts.lg : defaultLayout.lg,
+      md: Array.isArray(layout.data.layouts.md) ? layout.data.layouts.md : defaultLayout.md,
+      sm: Array.isArray(layout.data.layouts.sm) ? layout.data.layouts.sm : defaultLayout.sm,
+      xs: Array.isArray(layout.data.layouts.xs) ? layout.data.layouts.xs : defaultLayout.xs,
+      xxs: Array.isArray(layout.data.layouts.xxs) ? layout.data.layouts.xxs : defaultLayout.xxs,
+    };
+
+    // Force a clean slate then apply the new layout
+    setLayouts({
+      lg: [], md: [], sm: [], xs: [], xxs: []
+    });
+
+    // Use setTimeout to ensure the reset is processed
+    setTimeout(() => {
+      console.log('Applying layout:', JSON.stringify(layoutToLoad, null, 2));
+      setLayouts(layoutToLoad);
+    }, 50);
   };
 
   const handleDeleteLayout = (layoutName: string) => {
@@ -183,7 +222,26 @@ const App: React.FC = () => {
   };
 
   const handleResetLayout = () => {
-    setLayouts(defaultLayout);
+    console.log('Resetting to default:', JSON.stringify(defaultLayout, null, 2));
+    
+    // Force a clean slate
+    setLayouts({
+      lg: [], md: [], sm: [], xs: [], xxs: []
+    });
+
+    // Use setTimeout to ensure the reset is processed
+    setTimeout(() => {
+      // Ensure all breakpoints exist in the default layout
+      const layoutToApply = {
+        lg: defaultLayout.lg || [],
+        md: defaultLayout.md || [],
+        sm: defaultLayout.sm || [],
+        xs: defaultLayout.xs || [],
+        xxs: defaultLayout.xxs || []
+      };
+      console.log('Applying default layout:', JSON.stringify(layoutToApply, null, 2));
+      setLayouts(layoutToApply);
+    }, 50);
   };
 
   const handleLayoutChange = (layout: Layout[]) => {
@@ -213,6 +271,7 @@ const App: React.FC = () => {
             onLayoutsChange={onLayoutChange}
             draggableHandle=".widget-header"
             useCSSTransforms={true}
+            key={JSON.stringify(layouts)}
           >
             <div key="chart">
               <MuiWidget title="Chart" noScroll>
