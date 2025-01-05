@@ -54,20 +54,18 @@ interface ContainerProps {
 const Container = styled.div<ContainerProps>`
   position: relative;
   width: ${(props: ContainerProps) => props.width ? `${props.width}px` : '100%'};
-  height: 60px;
-  padding: ${theme.spacing.md};
+  height: 100%;
+  padding: 8px;
   user-select: none;
-  background-color: ${theme.colors.background.paper};
-  border: 1px solid ${theme.colors.border.main};
-  border-radius: ${theme.radii.md};
-  margin: ${theme.spacing.md} 0;
+  display: flex;
+  align-items: center;
 `;
 
 const Bar = styled.div`
   position: absolute;
   top: 50%;
-  left: ${theme.spacing.md};
-  right: ${theme.spacing.md};
+  left: 32px;
+  right: 32px;
   transform: translateY(-50%);
   height: 4px;
   background: linear-gradient(
@@ -98,7 +96,8 @@ const PriceLabel = styled(Typography).attrs({ $variant: 'numeric' })`
   position: absolute;
   transform: translateX(-50%);
   white-space: nowrap;
-  bottom: 0;
+  bottom: 4px;
+  font-size: 11px;
   color: ${theme.colors.text.secondary};
 `;
 
@@ -112,8 +111,8 @@ const ExchangeIcon = styled.div<ExchangeIconProps>`
   left: ${(props: ExchangeIconProps) => props.position}%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: ${theme.radii.full};
   background-color: ${theme.colors.background.paper};
   box-shadow: ${theme.shadows.md};
@@ -231,69 +230,71 @@ const PriceRange: React.FC<PriceRangeProps> = ({
     return <div>Error: {error}</div>;
   }
 
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
+
   return (
-    <Widget
-      title={`Price Range - ${symbol}`}
-      loading={loading}
-      error={error}
-    >
-      <Container ref={containerRef} width={width}>
-        <Bar />
-        <PriceLabel style={{ left: '0%' }}>
-          {formatPrice(minPrice)}
-        </PriceLabel>
-        <PriceLabel style={{ left: '100%' }}>
-          {formatPrice(maxPrice)}
-        </PriceLabel>
+    <Container ref={containerRef} width={width}>
+      <Bar />
+      <PriceLabel style={{ left: '0%' }}>
+        {formatPrice(minPrice)}
+      </PriceLabel>
+      <PriceLabel style={{ left: '100%' }}>
+        {formatPrice(maxPrice)}
+      </PriceLabel>
 
-        {exchanges.map((exchange) => {
-          const position = calculatePosition(exchange.price);
-          const previousPrice = previousPrices[exchange.id] || exchange.price;
-          const isUp = exchange.price >= previousPrice;
-          const priceDiff = Math.abs(exchange.price - previousPrice);
-          const percentChange = (priceDiff / previousPrice) * 100;
+      {exchanges.map((exchange) => {
+        const position = calculatePosition(exchange.price);
+        const previousPrice = previousPrices[exchange.id] || exchange.price;
+        const isUp = exchange.price >= previousPrice;
+        const priceDiff = Math.abs(exchange.price - previousPrice);
+        const percentChange = (priceDiff / previousPrice) * 100;
 
-          return (
-            <ExchangeIcon
-              key={exchange.id}
-              position={position}
-              isUp={isUp}
-              data-testid={`exchange-icon-${exchange.id}`}
-            >
-              <img
-                src={exchange.icon}
-                alt={`${exchange.name} icon`}
-                loading="lazy"
-              />
-              <Tooltip>
-                <Typography $variant="body2" $weight="semibold">
-                  {exchange.name}
-                </Typography>
-                <Typography $variant="numeric" style={{ marginTop: theme.spacing.xs }}>
-                  {formatPrice(exchange.price)}
-                </Typography>
-                <Typography
-                  $variant="caption"
-                  style={{
-                    marginTop: theme.spacing.xs,
-                    color: isUp ? theme.colors.success.main : theme.colors.error.main
-                  }}
-                >
-                  {isUp ? '▲' : '▼'} {formatPrice(priceDiff)} ({percentChange.toFixed(2)}%)
-                </Typography>
-                <Typography
-                  $variant="caption"
-                  $color={theme.colors.text.secondary}
-                  style={{ marginTop: theme.spacing.xs }}
-                >
-                  Last updated: {new Date(exchange.timestamp).toLocaleTimeString()}
-                </Typography>
-              </Tooltip>
-            </ExchangeIcon>
-          );
-        })}
-      </Container>
-    </Widget>
+        return (
+          <ExchangeIcon
+            key={exchange.id}
+            position={position}
+            isUp={isUp}
+            data-testid={`exchange-icon-${exchange.id}`}
+          >
+            <img
+              src={exchange.icon}
+              alt={`${exchange.name} icon`}
+              loading="lazy"
+            />
+            <Tooltip>
+              <Typography $variant="body2" $weight="semibold">
+                {exchange.name}
+              </Typography>
+              <Typography $variant="numeric" style={{ marginTop: theme.spacing.xs }}>
+                {formatPrice(exchange.price)}
+              </Typography>
+              <Typography
+                $variant="caption"
+                style={{
+                  marginTop: theme.spacing.xs,
+                  color: isUp ? theme.colors.success.main : theme.colors.error.main
+                }}
+              >
+                {isUp ? '▲' : '▼'} {formatPrice(priceDiff)} ({percentChange.toFixed(2)}%)
+              </Typography>
+              <Typography
+                $variant="caption"
+                $color={theme.colors.text.secondary}
+                style={{ marginTop: theme.spacing.xs }}
+              >
+                Last updated: {new Date(exchange.timestamp).toLocaleTimeString()}
+              </Typography>
+            </Tooltip>
+          </ExchangeIcon>
+        );
+      })}
+    </Container>
   );
 };
 
