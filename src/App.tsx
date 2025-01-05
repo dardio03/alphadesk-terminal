@@ -15,11 +15,22 @@ import Alerts from './components/Alerts';
 import OrderBookDepth from './components/OrderBookDepth';
 import Orders from './components/Orders';
 import { MuiWidget } from './components/common/MuiWidget';
+import { TopMenu } from './components/TopMenu';
 import { theme } from './styles/theme';
 import { muiTheme } from './styles/muiTheme';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import './App.css';
+
+// Type for saved layouts
+interface SavedLayout {
+  name: string;
+  data: {
+    layouts: Layouts;
+    symbol: string;
+  };
+  timestamp: number;
+}
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -72,8 +83,14 @@ interface Layouts {
 type Breakpoints = { [key in Breakpoint]: number };
 type Cols = { [key in Breakpoint]: number };
 
+const LAYOUTS_STORAGE_KEY = 'alphadesk-layouts';
+
 const App: React.FC = () => {
   const [symbol] = useState('BTCUSDT');
+  const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>(() => {
+    const saved = localStorage.getItem(LAYOUTS_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  });
   // Calculate layout based on breakpoint
   const generateLayout = (cols: number, isSmallScreen: boolean = false) => {
     // Base proportions from original design
@@ -137,6 +154,30 @@ const App: React.FC = () => {
     setLayouts(allLayouts as Layouts);
   };
 
+  const handleSaveLayout = (layout: { name: string; timestamp: number }) => {
+    const newLayout: SavedLayout = {
+      ...layout,
+      data: {
+        layouts,
+        symbol,
+      }
+    };
+
+    const updatedLayouts = [...savedLayouts.filter(l => l.name !== layout.name), newLayout];
+    setSavedLayouts(updatedLayouts);
+    localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(updatedLayouts));
+  };
+
+  const handleLoadLayout = (layout: SavedLayout) => {
+    setLayouts(layout.data.layouts);
+  };
+
+  const handleDeleteLayout = (layoutName: string) => {
+    const updatedLayouts = savedLayouts.filter(l => l.name !== layoutName);
+    setSavedLayouts(updatedLayouts);
+    localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(updatedLayouts));
+  };
+
   const handleLayoutChange = (layout: Layout[]) => {
     // Handle single layout change if needed
   };
@@ -145,6 +186,12 @@ const App: React.FC = () => {
     <MuiThemeProvider theme={muiTheme}>
       <StyledThemeProvider theme={theme}>
         <AppContainer>
+          <TopMenu
+            onSaveLayout={handleSaveLayout}
+            onLoadLayout={handleLoadLayout}
+            onDeleteLayout={handleDeleteLayout}
+            savedLayouts={savedLayouts}
+          />
           <StyledResponsiveGridLayout
             className="layout"
             layouts={layouts}
