@@ -7,6 +7,7 @@ const BINANCE_WS_URL = 'wss://stream.binance.com:9443/ws';
 export const useBinanceWebSocket = ({ symbol, onData, onError }: WebSocketHookProps) => {
   const handleMessage = useCallback((message: WebSocketMessage) => {
     try {
+      console.log('Received Binance message:', message);
       const data = message as BinanceWebSocketMessage;
       
       // Handle subscription response
@@ -14,9 +15,15 @@ export const useBinanceWebSocket = ({ symbol, onData, onError }: WebSocketHookPr
         console.log('Binance subscription successful');
         return;
       }
+      
+      // Log unknown message types
+      if (!data.stream?.endsWith('@depth20@100ms')) {
+        console.log('Unknown Binance message type:', data);
+        return;
+      }
 
       // Handle order book updates
-      if (data.stream?.endsWith('@depth@100ms') && data.data) {
+      if (data.stream?.endsWith('@depth20@100ms') && data.data) {
         const { b: bids = [], a: asks = [] } = data.data;
         
         // Only process if we have both bids and asks
@@ -61,11 +68,13 @@ export const useBinanceWebSocket = ({ symbol, onData, onError }: WebSocketHookPr
     onMessage: handleMessage,
     onError,
     onConnected: () => {
+      console.log('Binance WebSocket connected, subscribing to:', symbol);
       const subscribeMessage = {
         method: 'SUBSCRIBE',
-        params: [`${symbol.toLowerCase()}@depth@100ms`],
+        params: [`${symbol.toLowerCase()}@depth20@100ms`],
         id: Date.now()
       };
+      console.log('Sending subscription message:', subscribeMessage);
       sendMessage(subscribeMessage);
     },
     onDisconnected: () => {
