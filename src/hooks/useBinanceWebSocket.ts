@@ -2,19 +2,28 @@ import { useCallback } from 'react';
 import useWebSocket from './useWebSocket';
 import { WebSocketHookProps, OrderBookData, WebSocketMessage, BinanceWebSocketMessage } from '../types/exchange';
 
-const BINANCE_WS_URL = 'wss://stream.binance.com/ws';
+const BINANCE_WS_URL = 'wss://stream.binance.com:9443/ws';
 
 export const useBinanceWebSocket = ({ symbol, onData, onError }: WebSocketHookProps) => {
   const handleMessage = useCallback((message: WebSocketMessage) => {
-    const binanceMessage = message as BinanceWebSocketMessage;
     try {
-      if (message.bids && message.asks) {
+      const data = message as BinanceWebSocketMessage;
+      
+      // Handle subscription response
+      if (data.result === null && data.id) {
+        console.log('Binance subscription successful');
+        return;
+      }
+
+      // Handle order book updates
+      if (data.stream?.endsWith('@depth@100ms') && data.data) {
+        const { b: bids, a: asks } = data.data;
         const formattedData: OrderBookData = {
-          bids: message.bids.map(([price, quantity]: [string, string]) => ({
+          bids: bids.map(([price, quantity]: [string, string]) => ({
             price: parseFloat(price),
             quantity: parseFloat(quantity)
           })),
-          asks: message.asks.map(([price, quantity]: [string, string]) => ({
+          asks: asks.map(([price, quantity]: [string, string]) => ({
             price: parseFloat(price),
             quantity: parseFloat(quantity)
           }))
@@ -22,6 +31,7 @@ export const useBinanceWebSocket = ({ symbol, onData, onError }: WebSocketHookPr
         onData(formattedData);
       }
     } catch (error) {
+      console.error('Failed to parse Binance message:', message);
       onError(`Failed to parse Binance data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, [onData, onError]);
@@ -33,8 +43,8 @@ export const useBinanceWebSocket = ({ symbol, onData, onError }: WebSocketHookPr
     onConnected: () => {
       const subscribeMessage = {
         method: 'SUBSCRIBE',
-        params: [`${symbol.toLowerCase()}@depth20@100ms`],
-        id: 1
+        params: [`${symbol.toLowerCase()}@depth@100ms`],
+        id: Date.now()
       };
       sendMessage(subscribeMessage);
     },
