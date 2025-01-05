@@ -30,9 +30,9 @@ interface Layout {
 
 interface TopMenuProps {
   onSaveLayout: (layout: Layout) => void;
-  onLoadLayout: (layout: Layout) => Promise<void>;
+  onLoadLayout: (layout: Layout) => void;
   onDeleteLayout: (layoutName: string) => void;
-  onResetLayout: () => Promise<void>;
+  onResetLayout: () => void;
   savedLayouts: Layout[];
 }
 
@@ -133,8 +133,8 @@ export const TopMenu: React.FC<TopMenuProps> = ({
               Save Layout
             </MenuItem>
             <MenuItem
-              onClick={async () => {
-                await onResetLayout();
+              onClick={() => {
+                onResetLayout();
                 setLayoutAnchor(null);
               }}
             >
@@ -155,8 +155,8 @@ export const TopMenu: React.FC<TopMenuProps> = ({
                 {savedLayouts.map((layout) => (
                   <MenuItem
                     key={layout.name}
-                    onClick={async () => {
-                      await onLoadLayout(layout);
+                    onClick={() => {
+                      onLoadLayout(layout);
                       setLayoutAnchor(null);
                     }}
                     sx={{

@@ -153,30 +153,15 @@ const App: React.FC = () => {
 
   const [layouts, setLayouts] = useState<Layouts>(defaultLayout);
 
-  const [currentLayout, setCurrentLayout] = useState<Layout[]>([]);
-  const [isResetting, setIsResetting] = useState(false);
-
   const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
-    if (!isResetting) {
-      setCurrentLayout(currentLayout);
-      setLayouts(allLayouts as Layouts);
-    }
+    setLayouts(allLayouts as Layouts);
   };
 
   const handleSaveLayout = (layout: { name: string; timestamp: number }) => {
-    // Get the current layout state
-    const currentLayouts = {
-      lg: layouts.lg || [],
-      md: layouts.md || [],
-      sm: layouts.sm || [],
-      xs: layouts.xs || [],
-      xxs: layouts.xxs || []
-    };
-
     const newLayout: SavedLayout = {
       ...layout,
       data: {
-        layouts: currentLayouts,
+        layouts,
         symbol,
       }
     };
@@ -186,26 +171,9 @@ const App: React.FC = () => {
     localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(updatedLayouts));
   };
 
-  const handleLoadLayout = async (layout: SavedLayout) => {
-    setIsResetting(true);
-    
-    // Clear current layout
-    setLayouts({
-      lg: [], md: [], sm: [], xs: [], xxs: []
-    });
-    setCurrentLayout([]);
-
-    // Wait for reset
-    await new Promise(resolve => setTimeout(resolve, 100));
-
+  const handleLoadLayout = (layout: SavedLayout) => {
     // Apply saved layout
-    const savedLayouts = layout.data.layouts;
-    setLayouts(savedLayouts);
-    
-    // Wait for layout to be applied
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    setIsResetting(false);
+    setLayouts(layout.data.layouts);
   };
 
   const handleDeleteLayout = (layoutName: string) => {
@@ -214,25 +182,8 @@ const App: React.FC = () => {
     localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(updatedLayouts));
   };
 
-  const handleResetLayout = async () => {
-    setIsResetting(true);
-    
-    // Clear current layout
-    setLayouts({
-      lg: [], md: [], sm: [], xs: [], xxs: []
-    });
-    setCurrentLayout([]);
-
-    // Wait for reset
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Apply default layout
+  const handleResetLayout = () => {
     setLayouts(defaultLayout);
-    
-    // Wait for layout to be applied
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    setIsResetting(false);
   };
 
   const handleLayoutChange = (layout: Layout[]) => {
@@ -262,11 +213,6 @@ const App: React.FC = () => {
             onLayoutsChange={onLayoutChange}
             draggableHandle=".widget-header"
             useCSSTransforms={true}
-            measureBeforeMount={false}
-            isBounded={true}
-            preventCollision={true}
-            compactType={null}
-            key={isResetting ? Date.now() : 'normal'} // Force remount when resetting
           >
             <div key="chart">
               <MuiWidget title="Chart" noScroll>
