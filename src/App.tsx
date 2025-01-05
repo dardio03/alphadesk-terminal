@@ -23,9 +23,15 @@ import './App.css';
 
 const AppContainer = styled.div`
   min-height: 100vh;
+  width: 100%;
   background-color: ${props => props.theme.colors.background.default};
   color: ${props => props.theme.colors.text.primary};
-  padding: 20px;
+  padding: 8px;
+  overflow-x: hidden;
+
+  @media (max-width: 768px) {
+    padding: 4px;
+  }
 `;
 
 const StyledResponsiveGridLayout = styled(WidthProvider(Responsive))`
@@ -68,39 +74,63 @@ type Cols = { [key in Breakpoint]: number };
 
 const App: React.FC = () => {
   const [symbol] = useState('BTCUSDT');
-  // Convert pixel sizes to grid units
-  const pxToGridUnits = (px: number, isHeight: boolean = false) => {
-    if (isHeight) {
-      return Math.ceil(px / 20); // Row height is 20px for more precise sizing
+  // Calculate layout based on breakpoint
+  const generateLayout = (cols: number, isSmallScreen: boolean = false) => {
+    // Base proportions from original design
+    const totalWidth = 1685; // 1015 + 335 + 335
+    const chartWidth = 1015;
+    const sideWidth = 335;
+
+    // Convert original widths to proportions
+    const chartProportion = Math.round((chartWidth / totalWidth) * cols);
+    const sideProportion = Math.round((sideWidth / totalWidth) * cols);
+
+    // Height proportions (based on 20px row height)
+    const fullHeight = 31; // 620px / 20px
+    const halfHeight = 16; // 310px / 20px
+    const smallHeight = 13; // 245px / 20px
+    const tinyHeight = 5;  // 95px / 20px
+
+    if (isSmallScreen) {
+      // Stack everything vertically for small screens
+      return [
+        { i: 'chart', x: 0, y: 0, w: cols, h: fullHeight },
+        { i: 'orderbook', x: 0, y: fullHeight, w: cols, h: halfHeight },
+        { i: 'lastTrades', x: 0, y: fullHeight + halfHeight, w: cols, h: halfHeight },
+        { i: 'pricerange', x: 0, y: fullHeight + halfHeight * 2, w: cols, h: tinyHeight },
+        { i: 'watchlist', x: 0, y: fullHeight + halfHeight * 2 + tinyHeight, w: cols, h: smallHeight },
+        { i: 'bidAskRange', x: 0, y: fullHeight + halfHeight * 2 + tinyHeight + smallHeight, w: cols, h: smallHeight },
+        { i: 'alerts', x: 0, y: fullHeight + halfHeight * 2 + tinyHeight + smallHeight * 2, w: cols, h: smallHeight },
+        { i: 'orderBookDepth', x: 0, y: fullHeight + halfHeight * 2 + tinyHeight + smallHeight * 3, w: cols, h: smallHeight },
+        { i: 'orders', x: 0, y: fullHeight + halfHeight * 2 + tinyHeight + smallHeight * 4, w: cols, h: smallHeight }
+      ];
     }
-    // Total width is 1685px (1015 + 335 + 335)
-    // Using 24 columns for more precise sizing
-    return Math.round((px / 1685) * 24);
+
+    // Default layout with proportional sizes
+    return [
+      // Main chart
+      { i: 'chart', x: 0, y: 0, w: chartProportion, h: fullHeight },
+      
+      // Order book section
+      { i: 'orderbook', x: chartProportion, y: 0, w: sideProportion, h: halfHeight },
+      { i: 'lastTrades', x: chartProportion, y: halfHeight, w: sideProportion, h: halfHeight },
+      { i: 'pricerange', x: chartProportion, y: fullHeight, w: sideProportion, h: tinyHeight },
+      
+      // Right column
+      { i: 'watchlist', x: chartProportion + sideProportion, y: 0, w: sideProportion, h: smallHeight },
+      { i: 'bidAskRange', x: chartProportion + sideProportion, y: smallHeight, w: sideProportion, h: smallHeight },
+      { i: 'alerts', x: chartProportion + sideProportion, y: smallHeight * 2, w: sideProportion, h: smallHeight },
+      { i: 'orderBookDepth', x: chartProportion + sideProportion, y: smallHeight * 3, w: sideProportion, h: smallHeight },
+      { i: 'orders', x: chartProportion + sideProportion, y: smallHeight * 4, w: sideProportion, h: smallHeight }
+    ];
   };
 
   const [layouts, setLayouts] = useState<Layouts>({
-    lg: [
-      // Main chart (1015 x 620 px)
-      { i: 'chart', x: 0, y: 0, w: pxToGridUnits(1015), h: pxToGridUnits(620, true), static: true },
-      
-      // Order book and trades section (335 x 620 px)
-      { i: 'orderbook', x: pxToGridUnits(1015), y: 0, w: pxToGridUnits(335), h: pxToGridUnits(310, true), static: true },
-      { i: 'lastTrades', x: pxToGridUnits(1015), y: pxToGridUnits(310, true), w: pxToGridUnits(335), h: pxToGridUnits(310, true), static: true },
-      
-      // Right column widgets (335 x 245 px each)
-      { i: 'watchlist', x: pxToGridUnits(1350), y: 0, w: pxToGridUnits(335), h: pxToGridUnits(245, true), static: true },
-      { i: 'bidAskRange', x: pxToGridUnits(1350), y: pxToGridUnits(245, true), w: pxToGridUnits(335), h: pxToGridUnits(245, true), static: true },
-      { i: 'alerts', x: pxToGridUnits(1350), y: pxToGridUnits(490, true), w: pxToGridUnits(335), h: pxToGridUnits(245, true), static: true },
-      { i: 'orderBookDepth', x: pxToGridUnits(1350), y: pxToGridUnits(735, true), w: pxToGridUnits(335), h: pxToGridUnits(245, true), static: true },
-      { i: 'orders', x: pxToGridUnits(1350), y: pxToGridUnits(980, true), w: pxToGridUnits(335), h: pxToGridUnits(245, true), static: true },
-      
-      // Price range (335 x 95 px)
-      { i: 'pricerange', x: pxToGridUnits(1015), y: pxToGridUnits(620, true), w: pxToGridUnits(335), h: pxToGridUnits(95, true), static: true }
-    ],
-    md: [], // We'll make it responsive later
-    sm: [],
-    xs: [],
-    xxs: []
+    lg: generateLayout(24),          // Large screens (≥1600px)
+    md: generateLayout(24),          // Medium screens (≥1200px)
+    sm: generateLayout(24),          // Small screens (≥992px)
+    xs: generateLayout(24, true),    // Extra small screens (≥768px)
+    xxs: generateLayout(24, true)    // Tiny screens (<768px)
   });
 
   const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
@@ -118,11 +148,11 @@ const App: React.FC = () => {
           <StyledResponsiveGridLayout
             className="layout"
             layouts={layouts}
-            breakpoints={{ lg: 1600, md: 1200, sm: 992, xs: 768, xxs: 480 } as Breakpoints}
+            breakpoints={{ lg: 1920, md: 1440, sm: 1200, xs: 768, xxs: 480 } as Breakpoints}
             cols={{ lg: 24, md: 24, sm: 24, xs: 24, xxs: 24 } as Cols}
             rowHeight={20}
-            margin={[8, 8]}
-            containerPadding={[8, 8]}
+            margin={[4, 4]}
+            containerPadding={[4, 4]}
             onLayoutChange={handleLayoutChange}
             onLayoutsChange={onLayoutChange}
             draggableHandle=".widget-header"
