@@ -81,65 +81,109 @@ const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({
   container_id = 'tradingview_widget'
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const widgetRef = useRef<any>(null);
 
+  // Handle resize
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/tv.js';
-    script.async = true;
-    script.onload = () => {
-      if (typeof window.TradingView !== 'undefined' && containerRef.current) {
-        const config: TradingViewConfig = {
-          symbol,
-          interval,
-          timezone,
-          theme,
-          style,
-          locale,
-          toolbar_bg,
-          enable_publishing,
-          allow_symbol_change,
-          container_id,
-          width,
-          height,
-          autosize,
-          studies,
-          hide_side_toolbar,
-          withdateranges,
-          hide_legend,
-          save_image,
-          hide_top_toolbar,
-          hide_volume
-        };
+    if (!containerRef.current) return;
 
-        new window.TradingView.widget(config);
+    const resizeObserver = new ResizeObserver(() => {
+      if (widgetRef.current && widgetRef.current.resize) {
+        widgetRef.current.resize();
       }
-    };
-    document.head.appendChild(script);
+    });
+
+    resizeObserver.observe(containerRef.current);
 
     return () => {
-      script.remove();
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    // Store widget instance
+    let widget: any;
+    
+    // Load TradingView script only if not already loaded
+    const loadTradingView = () => {
+      return new Promise<void>((resolve) => {
+        if (window.TradingView) {
+          resolve();
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+        script.onload = () => resolve();
+        document.head.appendChild(script);
+      });
+    };
+
+    // Initialize widget
+    const initWidget = () => {
+      if (!containerRef.current) return;
+
+      const config: TradingViewConfig = {
+        symbol,
+        interval,
+        timezone,
+        theme,
+        style,
+        locale,
+        toolbar_bg,
+        enable_publishing,
+        allow_symbol_change,
+        container_id,
+        width,
+        height,
+        autosize,
+        studies,
+        hide_side_toolbar,
+        withdateranges,
+        hide_legend,
+        save_image,
+        hide_top_toolbar,
+        hide_volume,
+        // Add options to improve performance
+        library_path: '/charting_library/',
+        disabled_features: [
+          'use_localstorage_for_settings',
+          'volume_force_overlay',
+          'create_volume_indicator_by_default',
+        ],
+        enabled_features: [
+          'disable_resolution_rebuild',
+        ],
+        load_last_chart: false,
+        auto_save_delay: 5
+      };
+
+      widget = new window.TradingView.widget(config);
+      widgetRef.current = widget;
+    };
+
+    // Load script and initialize widget
+    loadTradingView().then(initWidget);
+
+    // Cleanup
+    return () => {
+      if (widget && widget.remove) {
+        widget.remove();
+      }
     };
   }, [
+    // Only include props that should trigger a reload
     symbol,
     interval,
     timezone,
     theme,
     style,
-    locale,
-    toolbar_bg,
-    enable_publishing,
-    allow_symbol_change,
     container_id,
-    width,
-    height,
-    autosize,
-    studies,
-    hide_side_toolbar,
-    withdateranges,
-    hide_legend,
-    save_image,
-    hide_top_toolbar,
-    hide_volume
+    // Exclude size-related props
+    // width,
+    // height,
+    // autosize,
   ]);
 
   return (
