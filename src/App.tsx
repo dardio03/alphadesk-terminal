@@ -153,15 +153,18 @@ const App: React.FC = () => {
 
   const [layouts, setLayouts] = useState<Layouts>(defaultLayout);
 
+  const [currentLayouts, setCurrentLayouts] = useState<Layouts>(defaultLayout);
+
   const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
-    setLayouts(allLayouts as Layouts);
+    const newLayouts = allLayouts as Layouts;
+    setCurrentLayouts(newLayouts);
   };
 
   const handleSaveLayout = (layout: { name: string; timestamp: number }) => {
     const newLayout: SavedLayout = {
       ...layout,
       data: {
-        layouts,
+        layouts: currentLayouts,
         symbol,
       }
     };
@@ -176,10 +179,16 @@ const App: React.FC = () => {
     setLayouts({
       lg: [], md: [], sm: [], xs: [], xxs: []
     });
+    setCurrentLayouts({
+      lg: [], md: [], sm: [], xs: [], xxs: []
+    });
+
     // Use setTimeout to ensure the reset is processed before setting new layout
     setTimeout(() => {
-      setLayouts(layout.data.layouts);
-    }, 0);
+      const newLayouts = layout.data.layouts;
+      setLayouts(newLayouts);
+      setCurrentLayouts(newLayouts);
+    }, 50);
   };
 
   const handleDeleteLayout = (layoutName: string) => {
@@ -189,7 +198,18 @@ const App: React.FC = () => {
   };
 
   const handleResetLayout = () => {
-    setLayouts(defaultLayout);
+    setLayouts({
+      lg: [], md: [], sm: [], xs: [], xxs: []
+    });
+    setCurrentLayouts({
+      lg: [], md: [], sm: [], xs: [], xxs: []
+    });
+    
+    // Use setTimeout to ensure the reset is processed before setting new layout
+    setTimeout(() => {
+      setLayouts(defaultLayout);
+      setCurrentLayouts(defaultLayout);
+    }, 50);
   };
 
   const handleLayoutChange = (layout: Layout[]) => {
@@ -219,7 +239,7 @@ const App: React.FC = () => {
             onLayoutsChange={onLayoutChange}
             draggableHandle=".widget-header"
             useCSSTransforms={true}
-            key={JSON.stringify(layouts)} // Force remount when layouts change
+            key={JSON.stringify(layouts) + Date.now()} // Force remount when layouts change
           >
             <div key="chart">
               <MuiWidget title="Chart" noScroll>
