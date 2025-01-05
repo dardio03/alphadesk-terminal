@@ -142,13 +142,16 @@ const App: React.FC = () => {
     ];
   };
 
-  const [layouts, setLayouts] = useState<Layouts>({
+  // Create default layout
+  const defaultLayout = {
     lg: generateLayout(24),          // Large screens (≥1600px)
     md: generateLayout(24),          // Medium screens (≥1200px)
     sm: generateLayout(24),          // Small screens (≥992px)
     xs: generateLayout(24, true),    // Extra small screens (≥768px)
     xxs: generateLayout(24, true)    // Tiny screens (<768px)
-  });
+  };
+
+  const [layouts, setLayouts] = useState<Layouts>(defaultLayout);
 
   const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
     setLayouts(allLayouts as Layouts);
@@ -169,13 +172,22 @@ const App: React.FC = () => {
   };
 
   const handleLoadLayout = (layout: SavedLayout) => {
-    setLayouts(layout.data.layouts);
+    // Force a reset of the grid before applying the new layout
+    setLayouts({});
+    // Use setTimeout to ensure the reset is processed before setting new layout
+    setTimeout(() => {
+      setLayouts(layout.data.layouts);
+    }, 0);
   };
 
   const handleDeleteLayout = (layoutName: string) => {
     const updatedLayouts = savedLayouts.filter(l => l.name !== layoutName);
     setSavedLayouts(updatedLayouts);
     localStorage.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(updatedLayouts));
+  };
+
+  const handleResetLayout = () => {
+    setLayouts(defaultLayout);
   };
 
   const handleLayoutChange = (layout: Layout[]) => {
@@ -190,6 +202,7 @@ const App: React.FC = () => {
             onSaveLayout={handleSaveLayout}
             onLoadLayout={handleLoadLayout}
             onDeleteLayout={handleDeleteLayout}
+            onResetLayout={handleResetLayout}
             savedLayouts={savedLayouts}
           />
           <StyledResponsiveGridLayout
@@ -203,7 +216,9 @@ const App: React.FC = () => {
             onLayoutChange={handleLayoutChange}
             onLayoutsChange={onLayoutChange}
             draggableHandle=".widget-header"
+            measureBeforeMount={true}
             useCSSTransforms={true}
+            key={JSON.stringify(layouts)} // Force remount when layouts change
           >
             <div key="chart">
               <MuiWidget title="Chart" noScroll>

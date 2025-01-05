@@ -31,6 +31,7 @@ interface TopMenuProps {
   onSaveLayout: (layout: Layout) => void;
   onLoadLayout: (layout: Layout) => void;
   onDeleteLayout: (layoutName: string) => void;
+  onResetLayout: () => void;
   savedLayouts: Layout[];
 }
 
@@ -73,6 +74,7 @@ export const TopMenu: React.FC<TopMenuProps> = ({
   onSaveLayout,
   onLoadLayout,
   onDeleteLayout,
+  onResetLayout,
   savedLayouts
 }) => {
   const [layoutAnchor, setLayoutAnchor] = useState<null | HTMLElement>(null);
@@ -128,6 +130,15 @@ export const TopMenu: React.FC<TopMenuProps> = ({
             }}>
               <SaveIcon sx={{ mr: 1, fontSize: '1rem' }} />
               Save Layout
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                onResetLayout();
+                setLayoutAnchor(null);
+              }}
+            >
+              <RefreshIcon sx={{ mr: 1, fontSize: '1rem' }} />
+              Reset Layout
             </MenuItem>
             {savedLayouts.length > 0 && (
               <>
