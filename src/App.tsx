@@ -68,12 +68,14 @@ type Cols = { [key in Breakpoint]: number };
 
 const App: React.FC = () => {
   const [symbol] = useState('BTCUSDT');
-  // Convert pixel sizes to grid units (assuming 30px row height and 12 columns)
+  // Convert pixel sizes to grid units
   const pxToGridUnits = (px: number, isHeight: boolean = false) => {
     if (isHeight) {
-      return Math.ceil(px / 30); // Row height is 30px
+      return Math.ceil(px / 20); // Row height is 20px for more precise sizing
     }
-    return Math.round((px / 1685) * 12); // Total width is 1685px (1015 + 335 + 335)
+    // Total width is 1685px (1015 + 335 + 335)
+    // Using 24 columns for more precise sizing
+    return Math.round((px / 1685) * 24);
   };
 
   const [layouts, setLayouts] = useState<Layouts>({
@@ -117,10 +119,10 @@ const App: React.FC = () => {
             className="layout"
             layouts={layouts}
             breakpoints={{ lg: 1600, md: 1200, sm: 992, xs: 768, xxs: 480 } as Breakpoints}
-            cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 } as Cols}
-            rowHeight={30}
-            margin={[20, 20]}
-            containerPadding={[20, 20]}
+            cols={{ lg: 24, md: 24, sm: 24, xs: 24, xxs: 24 } as Cols}
+            rowHeight={20}
+            margin={[8, 8]}
+            containerPadding={[8, 8]}
             onLayoutChange={handleLayoutChange}
             onLayoutsChange={onLayoutChange}
             draggableHandle=".widget-header"

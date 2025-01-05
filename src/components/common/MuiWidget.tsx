@@ -26,27 +26,34 @@ const WidgetContainer = styled(Paper)(({ theme }) => ({
 const WidgetHeader = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  padding: theme.spacing(1, 2),
+  height: '21px',
+  padding: '0 8px',
   borderBottom: `1px solid ${theme.palette.divider}`,
   backgroundColor: theme.palette.background.paper,
   cursor: 'move',
   '& .MuiIconButton-root': {
-    padding: theme.spacing(0.5),
+    padding: 2,
+    width: 18,
+    height: 18,
+  },
+  '& .MuiSvgIcon-root': {
+    fontSize: '0.875rem',
   },
 }));
 
 const WidgetTitle = styled(Typography)(({ theme }) => ({
   flex: 1,
   fontWeight: theme.typography.fontWeightMedium,
-  fontSize: theme.typography.pxToRem(14),
+  fontSize: '12px',
   color: theme.palette.text.primary,
-  marginLeft: theme.spacing(1),
+  marginLeft: '4px',
+  lineHeight: '21px',
 }));
 
 const WidgetContent = styled(Box)(({ theme }) => ({
   flex: 1,
   overflow: 'auto',
-  padding: theme.spacing(2),
+  padding: 4,
   backgroundColor: theme.palette.background.default,
   '&::-webkit-scrollbar': {
     width: '8px',
