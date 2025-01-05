@@ -153,30 +153,37 @@ const App: React.FC = () => {
 
   const [layouts, setLayouts] = useState<Layouts>(defaultLayout);
 
-  const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
-    console.log('Layout changed:', JSON.stringify(allLayouts, null, 2));
-    // Ensure we have all breakpoints
-    const newLayouts = {
-      lg: allLayouts.lg || [],
-      md: allLayouts.md || [],
-      sm: allLayouts.sm || [],
-      xs: allLayouts.xs || [],
-      xxs: allLayouts.xxs || []
-    };
-    setLayouts(newLayouts);
+  // Keep track of the current layout state
+  const [currentBreakpoint, setCurrentBreakpoint] = useState<string>('lg');
+  const [currentLayout, setCurrentLayout] = useState<Layout[]>([]);
+
+  const onLayoutChange = (current: Layout[], all: { [key: string]: Layout[] }) => {
+    console.log('Layout changed for breakpoint:', currentBreakpoint);
+    console.log('Current layout:', JSON.stringify(current, null, 2));
+    
+    // Update the current layout
+    setCurrentLayout(current);
+    
+    // Update the layouts state with the new layout for the current breakpoint
+    setLayouts(prev => ({
+      ...prev,
+      [currentBreakpoint]: current
+    }));
   };
 
   const handleSaveLayout = (layout: { name: string; timestamp: number }) => {
-    // Get the current layout state and ensure all breakpoints exist
+    // Create a complete layout object with all breakpoints
     const layoutToSave = {
-      lg: layouts.lg || defaultLayout.lg,
-      md: layouts.md || defaultLayout.md,
-      sm: layouts.sm || defaultLayout.sm,
-      xs: layouts.xs || defaultLayout.xs,
-      xxs: layouts.xxs || defaultLayout.xxs
+      lg: currentBreakpoint === 'lg' ? currentLayout : (layouts.lg || []),
+      md: currentBreakpoint === 'md' ? currentLayout : (layouts.md || []),
+      sm: currentBreakpoint === 'sm' ? currentLayout : (layouts.sm || []),
+      xs: currentBreakpoint === 'xs' ? currentLayout : (layouts.xs || []),
+      xxs: currentBreakpoint === 'xxs' ? currentLayout : (layouts.xxs || [])
     };
 
-    console.log('Saving layout:', JSON.stringify(layoutToSave, null, 2));
+    console.log('Current breakpoint:', currentBreakpoint);
+    console.log('Current layout:', JSON.stringify(currentLayout, null, 2));
+    console.log('Saving complete layout:', JSON.stringify(layoutToSave, null, 2));
 
     const newLayout: SavedLayout = {
       ...layout,
@@ -203,6 +210,9 @@ const App: React.FC = () => {
       xxs: Array.isArray(layout.data.layouts.xxs) ? layout.data.layouts.xxs : defaultLayout.xxs,
     };
 
+    // Update current layout based on current breakpoint
+    setCurrentLayout(layoutToLoad[currentBreakpoint as keyof typeof layoutToLoad] || []);
+
     // Force a clean slate then apply the new layout
     setLayouts({
       lg: [], md: [], sm: [], xs: [], xxs: []
@@ -223,6 +233,9 @@ const App: React.FC = () => {
 
   const handleResetLayout = () => {
     console.log('Resetting to default:', JSON.stringify(defaultLayout, null, 2));
+    
+    // Update current layout based on current breakpoint
+    setCurrentLayout(defaultLayout[currentBreakpoint as keyof typeof defaultLayout] || []);
     
     // Force a clean slate
     setLayouts({
@@ -267,8 +280,14 @@ const App: React.FC = () => {
             rowHeight={20}
             margin={[4, 4]}
             containerPadding={[4, 4]}
-            onLayoutChange={handleLayoutChange}
-            onLayoutsChange={onLayoutChange}
+            onLayoutChange={onLayoutChange}
+            onBreakpointChange={(newBreakpoint) => {
+              console.log('Breakpoint changed to:', newBreakpoint);
+              setCurrentBreakpoint(newBreakpoint);
+            }}
+            onLayoutsChange={(newLayouts) => {
+              console.log('All layouts changed:', JSON.stringify(newLayouts, null, 2));
+            }}
             draggableHandle=".widget-header"
             useCSSTransforms={true}
             key={JSON.stringify(layouts)}
