@@ -51,6 +51,56 @@ const StyledResponsiveGridLayout = styled(WidthProvider(Responsive))`
     border: 1px solid ${props => props.theme.colors.border.main};
     border-radius: ${props => props.theme.radii.lg};
     overflow: hidden;
+    transition: all 200ms ease;
+    transition-property: transform, width, height, left, top;
+    
+    &.cssTransforms {
+      transition-property: transform, width, height;
+    }
+    
+    &.resizing {
+      transition: none;
+    }
+    
+    &.react-draggable-dragging {
+      transition: none;
+      z-index: 3;
+    }
+  }
+
+  .react-grid-item.react-grid-placeholder {
+    background: ${props => props.theme.colors.primary.main};
+    opacity: 0.1;
+    transition-duration: 100ms;
+    z-index: 2;
+    border-radius: 4px;
+    user-select: none;
+  }
+
+  .react-grid-item > .react-resizable-handle {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    bottom: 0;
+    right: 0;
+    cursor: se-resize;
+    opacity: 0;
+    transition: opacity 200ms ease;
+
+    &::after {
+      content: "";
+      position: absolute;
+      right: 3px;
+      bottom: 3px;
+      width: 5px;
+      height: 5px;
+      border-right: 2px solid rgba(255, 255, 255, 0.4);
+      border-bottom: 2px solid rgba(255, 255, 255, 0.4);
+    }
+  }
+
+  .react-grid-item:hover > .react-resizable-handle {
+    opacity: 1;
   }
 `;
 
@@ -213,16 +263,9 @@ const App: React.FC = () => {
     // Update current layout based on current breakpoint
     setCurrentLayout(layoutToLoad[currentBreakpoint as keyof typeof layoutToLoad] || []);
 
-    // Force a clean slate then apply the new layout
-    setLayouts({
-      lg: [], md: [], sm: [], xs: [], xxs: []
-    });
-
-    // Use setTimeout to ensure the reset is processed
-    setTimeout(() => {
-      console.log('Applying layout:', JSON.stringify(layoutToLoad, null, 2));
-      setLayouts(layoutToLoad);
-    }, 50);
+    // Apply the new layout directly
+    console.log('Applying layout:', JSON.stringify(layoutToLoad, null, 2));
+    setLayouts(layoutToLoad);
   };
 
   const handleDeleteLayout = (layoutName: string) => {
@@ -237,24 +280,16 @@ const App: React.FC = () => {
     // Update current layout based on current breakpoint
     setCurrentLayout(defaultLayout[currentBreakpoint as keyof typeof defaultLayout] || []);
     
-    // Force a clean slate
-    setLayouts({
-      lg: [], md: [], sm: [], xs: [], xxs: []
-    });
-
-    // Use setTimeout to ensure the reset is processed
-    setTimeout(() => {
-      // Ensure all breakpoints exist in the default layout
-      const layoutToApply = {
-        lg: defaultLayout.lg || [],
-        md: defaultLayout.md || [],
-        sm: defaultLayout.sm || [],
-        xs: defaultLayout.xs || [],
-        xxs: defaultLayout.xxs || []
-      };
-      console.log('Applying default layout:', JSON.stringify(layoutToApply, null, 2));
-      setLayouts(layoutToApply);
-    }, 50);
+    // Apply default layout directly
+    const layoutToApply = {
+      lg: defaultLayout.lg || [],
+      md: defaultLayout.md || [],
+      sm: defaultLayout.sm || [],
+      xs: defaultLayout.xs || [],
+      xxs: defaultLayout.xxs || []
+    };
+    console.log('Applying default layout:', JSON.stringify(layoutToApply, null, 2));
+    setLayouts(layoutToApply);
   };
 
   const handleLayoutChange = (layout: Layout[]) => {
@@ -290,7 +325,7 @@ const App: React.FC = () => {
             }}
             draggableHandle=".widget-header"
             useCSSTransforms={true}
-            key={JSON.stringify(layouts)}
+            key="grid" // Use static key to prevent remounts
           >
             <div key="chart">
               <MuiWidget title="Chart" noScroll>
