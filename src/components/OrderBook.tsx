@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import useBinanceOrderBook from '../hooks/useBinanceOrderBook';
 import useBybitOrderBook from '../hooks/useBybitOrderBook';
 import useCoinbaseOrderBook from '../hooks/useCoinbaseOrderBook';
+import useKrakenOrderBook from '../hooks/useKrakenOrderBook';
 import { OrderBookProps, OrderBookEntry } from '../types/exchange';
 import { formatPrice, formatQuantity, calculateSpreadPercentage } from '../utils/formatPrice';
 
@@ -10,7 +11,8 @@ import './OrderBook.css';
 export const EXCHANGES = {
   BINANCE: 'BINANCE',
   BYBIT: 'BYBIT',
-  COINBASE: 'COINBASE'
+  COINBASE: 'COINBASE',
+  KRAKEN: 'KRAKEN'
 } as const;
 
 type Exchange = typeof EXCHANGES[keyof typeof EXCHANGES];
@@ -20,13 +22,19 @@ interface AggregatedOrderBookEntry extends OrderBookEntry {
 }
 
 const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '' }) => {
-  const [enabledExchanges, setEnabledExchanges] = useState<Exchange[]>([EXCHANGES.BINANCE]);
+  const [enabledExchanges, setEnabledExchanges] = useState<Exchange[]>([
+    EXCHANGES.BINANCE,
+    EXCHANGES.BYBIT,
+    EXCHANGES.COINBASE,
+    EXCHANGES.KRAKEN
+  ]);
   const [error, setError] = useState<string | null>(null);
 
   // Use hooks for each exchange
   const binance = useBinanceOrderBook(symbol);
   const bybit = useBybitOrderBook(symbol);
   const coinbase = useCoinbaseOrderBook(symbol);
+  const kraken = useKrakenOrderBook(symbol);
 
   const getConnectionStatus = (exchange: Exchange) => {
     switch (exchange) {
@@ -36,6 +44,8 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
         return coinbase.connectionState;
       case EXCHANGES.BYBIT:
         return bybit.connectionState;
+      case EXCHANGES.KRAKEN:
+        return kraken.connectionState;
       default:
         return 'unknown';
     }
@@ -43,7 +53,7 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
 
   // Set error if any exchange has an error
   useEffect(() => {
-    const errors = [binance.error, bybit.error, coinbase.error].filter(Boolean);
+    const errors = [binance.error, bybit.error, coinbase.error, kraken.error].filter(Boolean);
     if (errors.length > 0) {
       setError(errors[0]);
     } else {
@@ -56,19 +66,28 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
     const allBids: (OrderBookEntry & { exchange: Exchange })[] = [];
     const allAsks: (OrderBookEntry & { exchange: Exchange })[] = [];
 
+    const addExchangeOrders = (orders: OrderBookEntry[], exchange: Exchange) => {
+      return orders.map(order => ({ ...order, exchange }));
+    };
+
     if (enabledExchanges.includes(EXCHANGES.BINANCE)) {
-      allBids.push(...binance.orderBook.bids.map(bid => ({ ...bid, exchange: EXCHANGES.BINANCE })));
-      allAsks.push(...binance.orderBook.asks.map(ask => ({ ...ask, exchange: EXCHANGES.BINANCE })));
+      allBids.push(...addExchangeOrders(binance.orderBook.bids, EXCHANGES.BINANCE));
+      allAsks.push(...addExchangeOrders(binance.orderBook.asks, EXCHANGES.BINANCE));
     }
 
     if (enabledExchanges.includes(EXCHANGES.BYBIT)) {
-      allBids.push(...bybit.orderBook.bids.map((bid: OrderBookEntry) => ({ ...bid, exchange: EXCHANGES.BYBIT })));
-      allAsks.push(...bybit.orderBook.asks.map((ask: OrderBookEntry) => ({ ...ask, exchange: EXCHANGES.BYBIT })));
+      allBids.push(...addExchangeOrders(bybit.orderBook.bids, EXCHANGES.BYBIT));
+      allAsks.push(...addExchangeOrders(bybit.orderBook.asks, EXCHANGES.BYBIT));
     }
 
     if (enabledExchanges.includes(EXCHANGES.COINBASE)) {
-      allBids.push(...coinbase.orderBook.bids.map(bid => ({ ...bid, exchange: EXCHANGES.COINBASE })));
-      allAsks.push(...coinbase.orderBook.asks.map(ask => ({ ...ask, exchange: EXCHANGES.COINBASE })));
+      allBids.push(...addExchangeOrders(coinbase.orderBook.bids, EXCHANGES.COINBASE));
+      allAsks.push(...addExchangeOrders(coinbase.orderBook.asks, EXCHANGES.COINBASE));
+    }
+
+    if (enabledExchanges.includes(EXCHANGES.KRAKEN)) {
+      allBids.push(...addExchangeOrders(kraken.orderBook.bids, EXCHANGES.KRAKEN));
+      allAsks.push(...addExchangeOrders(kraken.orderBook.asks, EXCHANGES.KRAKEN));
     }
 
     // Aggregate and sort bids
@@ -104,7 +123,8 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
     enabledExchanges,
     binance.orderBook,
     bybit.orderBook,
-    coinbase.orderBook
+    coinbase.orderBook,
+    kraken.orderBook
   ]);
 
   const handleToggleExchange = (exchange: Exchange) => {
@@ -277,15 +297,6 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
                 transform: `translateY(${scrollStates.asks.isTop ? '0' : '100%'})`
               }}
             />
-          </div>
-
-          <div className="spread">
-            {asks.length > 0 && bids.length > 0 && (
-              <div>
-                Spread: {formatPrice(asks[0].price - bids[0].price)} (
-                {calculateSpreadPercentage(bids[0].price, asks[0].price)}%)
-              </div>
-            )}
           </div>
 
           <div className={`orderbook-section bids-section ${scrollStates.bids.isTop ? 'scrolled-top' : ''} ${scrollStates.bids.isBottom ? 'scrolled-bottom' : ''}`}>

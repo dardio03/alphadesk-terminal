@@ -3,6 +3,10 @@ import styled, { keyframes } from 'styled-components';
 import { formatPrice } from '../utils/formatPrice';
 import { Typography, Widget } from './common';
 import { theme } from '../styles/theme';
+import useBinanceOrderBook from '../hooks/useBinanceOrderBook';
+import useBybitOrderBook from '../hooks/useBybitOrderBook';
+import useCoinbaseOrderBook from '../hooks/useCoinbaseOrderBook';
+import useKrakenOrderBook from '../hooks/useKrakenOrderBook';
 
 interface ExchangeData {
   id: string;
@@ -18,23 +22,17 @@ interface PriceRangeProps {
   width?: number;
 }
 
-// Mock exchange data for development
-const mockExchanges: ExchangeData[] = [
-  {
-    id: 'binance',
-    name: 'Binance',
-    price: 42500.25,
-    icon: 'https://assets.coingecko.com/markets/images/52/small/binance.jpg?1519353250',
-    timestamp: Date.now()
-  },
-  {
-    id: 'coinbase',
-    name: 'Coinbase',
-    price: 42550.50,
-    icon: 'https://assets.coingecko.com/markets/images/23/small/Coinbase_Coin.png?1519353250',
-    timestamp: Date.now()
-  }
-];
+import useBinanceOrderBook from '../hooks/useBinanceOrderBook';
+import useBybitOrderBook from '../hooks/useBybitOrderBook';
+import useCoinbaseOrderBook from '../hooks/useCoinbaseOrderBook';
+import useKrakenOrderBook from '../hooks/useKrakenOrderBook';
+
+const EXCHANGE_ICONS = {
+  binance: 'https://assets.coingecko.com/markets/images/52/small/binance.jpg?1519353250',
+  bybit: 'https://assets.coingecko.com/markets/images/1624/small/bybit_logo.png?1550468762',
+  coinbase: 'https://assets.coingecko.com/markets/images/23/small/Coinbase_Coin.png?1519353250',
+  kraken: 'https://assets.coingecko.com/markets/images/29/small/kraken.jpg?1519353250'
+};
 
 const slideIn = keyframes`
   from {
@@ -174,12 +172,91 @@ const PriceRange: React.FC<PriceRangeProps> = ({
   width = 800
 }) => {
   const [previousPrices, setPreviousPrices] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Using mock data for development
-  const exchanges = mockExchanges;
+  // Initialize order book hooks
+  const binance = useBinanceOrderBook(symbol);
+  const bybit = useBybitOrderBook(symbol);
+  const coinbase = useCoinbaseOrderBook(symbol);
+  const kraken = useKrakenOrderBook(symbol);
+
+  // Check for errors from any exchange
+  const error = useMemo(() => {
+    const errors = [
+      binance.error,
+      bybit.error,
+      coinbase.error,
+      kraken.error
+    ].filter(Boolean);
+    return errors.length > 0 ? errors[0] : null;
+  }, [binance.error, bybit.error, coinbase.error, kraken.error]);
+
+  // Check if any exchange is still loading
+  const loading = useMemo(() => {
+    return [
+      binance.connectionState,
+      bybit.connectionState,
+      coinbase.connectionState,
+      kraken.connectionState
+    ].some(state => state === 'connecting');
+  }, [binance.connectionState, bybit.connectionState, coinbase.connectionState, kraken.connectionState]);
+
+  // Get best prices from each exchange
+  const exchanges = useMemo(() => {
+    const now = Date.now();
+    const result: ExchangeData[] = [];
+
+    if (binance.orderBook.bids.length > 0 && binance.orderBook.asks.length > 0) {
+      const price = (binance.orderBook.bids[0].price + binance.orderBook.asks[0].price) / 2;
+      result.push({
+        id: 'binance',
+        name: 'Binance',
+        price,
+        icon: EXCHANGE_ICONS.binance,
+        timestamp: now
+      });
+    }
+
+    if (bybit.orderBook.bids.length > 0 && bybit.orderBook.asks.length > 0) {
+      const price = (bybit.orderBook.bids[0].price + bybit.orderBook.asks[0].price) / 2;
+      result.push({
+        id: 'bybit',
+        name: 'Bybit',
+        price,
+        icon: EXCHANGE_ICONS.bybit,
+        timestamp: now
+      });
+    }
+
+    if (coinbase.orderBook.bids.length > 0 && coinbase.orderBook.asks.length > 0) {
+      const price = (coinbase.orderBook.bids[0].price + coinbase.orderBook.asks[0].price) / 2;
+      result.push({
+        id: 'coinbase',
+        name: 'Coinbase',
+        price,
+        icon: EXCHANGE_ICONS.coinbase,
+        timestamp: now
+      });
+    }
+
+    if (kraken.orderBook.bids.length > 0 && kraken.orderBook.asks.length > 0) {
+      const price = (kraken.orderBook.bids[0].price + kraken.orderBook.asks[0].price) / 2;
+      result.push({
+        id: 'kraken',
+        name: 'Kraken',
+        price,
+        icon: EXCHANGE_ICONS.kraken,
+        timestamp: now
+      });
+    }
+
+    return result;
+  }, [
+    binance.orderBook,
+    bybit.orderBook,
+    coinbase.orderBook,
+    kraken.orderBook
+  ]);
 
   const { minPrice, maxPrice } = useMemo(() => {
     const prices = exchanges.map(e => e.price);
