@@ -8,6 +8,7 @@ interface WidgetProps {
   onClose?: () => void;
   onSettings?: () => void;
   className?: string;
+  noScroll?: boolean;
 }
 
 const WidgetContainer = styled(Paper)(({ theme }) => ({
@@ -50,25 +51,31 @@ const WidgetTitle = styled(Typography)(({ theme }) => ({
   lineHeight: '21px',
 }));
 
-const WidgetContent = styled(Box)(({ theme }) => ({
+interface WidgetContentProps {
+  noScroll?: boolean;
+}
+
+const WidgetContent = styled(Box)<WidgetContentProps>(({ theme, noScroll }) => ({
   flex: 1,
-  overflow: 'auto',
+  overflow: noScroll ? 'hidden' : 'auto',
   padding: 4,
   backgroundColor: theme.palette.background.default,
-  '&::-webkit-scrollbar': {
-    width: '8px',
-    height: '8px',
-  },
-  '&::-webkit-scrollbar-track': {
-    background: theme.palette.background.paper,
-  },
-  '&::-webkit-scrollbar-thumb': {
-    background: theme.palette.divider,
-    borderRadius: '4px',
-    '&:hover': {
-      background: theme.palette.action.hover,
+  ...(noScroll ? {} : {
+    '&::-webkit-scrollbar': {
+      width: '8px',
+      height: '8px',
     },
-  },
+    '&::-webkit-scrollbar-track': {
+      background: theme.palette.background.paper,
+    },
+    '&::-webkit-scrollbar-thumb': {
+      background: theme.palette.divider,
+      borderRadius: '4px',
+      '&:hover': {
+        background: theme.palette.action.hover,
+      },
+    },
+  }),
 }));
 
 export const MuiWidget: React.FC<WidgetProps> = ({
@@ -77,6 +84,7 @@ export const MuiWidget: React.FC<WidgetProps> = ({
   onClose,
   onSettings,
   className,
+  noScroll,
 }) => {
   return (
     <WidgetContainer className={className} elevation={2}>
@@ -102,7 +110,7 @@ export const MuiWidget: React.FC<WidgetProps> = ({
           </IconButton>
         )}
       </WidgetHeader>
-      <WidgetContent>{children}</WidgetContent>
+      <WidgetContent noScroll={noScroll}>{children}</WidgetContent>
     </WidgetContainer>
   );
 };
