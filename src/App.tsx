@@ -159,7 +159,7 @@ const App: React.FC = () => {
             useCSSTransforms={true}
           >
             <div key="chart">
-              <MuiWidget title="Chart">
+              <MuiWidget title="Chart" noScroll>
                 <TradingViewWidget
                   symbol={symbol}
                   theme="dark"
@@ -216,7 +216,7 @@ const App: React.FC = () => {
             </div>
 
             <div key="pricerange">
-              <MuiWidget title="Price Range">
+              <MuiWidget title="Price Range" noScroll>
                 <PriceRange symbol={symbol} />
               </MuiWidget>
             </div>
