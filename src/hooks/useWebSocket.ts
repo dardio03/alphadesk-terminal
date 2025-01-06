@@ -16,10 +16,10 @@ interface UseWebSocketResult {
   error: string | null;
 }
 
-const INITIAL_RETRY_DELAY = 1000;
+const INITIAL_RETRY_DELAY = 3000;  // Increased initial delay
 const MAX_RETRY_DELAY = 30000;
-const BACKOFF_FACTOR = 1.5;
-const MAX_RETRIES = 10;
+const BACKOFF_FACTOR = 2;      // More aggressive backoff
+const MAX_RETRIES = 5;         // Fewer retries
 
 export const useWebSocket = ({
   url,
@@ -67,12 +67,26 @@ export const useWebSocket = ({
 
     heartbeatInterval.current = setInterval(() => {
       const now = Date.now();
-      if (now - lastMessageTime.current > 30000) { // 30 seconds without messages
-        console.warn('No messages received for 30 seconds, reconnecting...');
-        resetConnection();
-        connect();
+      if (now - lastMessageTime.current > 10000) { // 10 seconds without messages
+        console.warn('No messages received for 10 seconds from:', url);
+        
+        // Try to send a ping before reconnecting
+        try {
+          if (ws.current?.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify({ type: 'ping' }));
+            lastMessageTime.current = now;
+          } else {
+            console.warn('WebSocket not open, reconnecting...');
+            resetConnection();
+            connect();
+          }
+        } catch (err) {
+          console.error('Failed to send ping, reconnecting...', err);
+          resetConnection();
+          connect();
+        }
       }
-    }, 5000); // Check every 5 seconds
+    }, 3000); // Check every 3 seconds
   }, []);
 
   const connect = useCallback(() => {
@@ -86,12 +100,20 @@ export const useWebSocket = ({
       ws.current = new WebSocket(url);
 
       ws.current.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('WebSocket connected to:', url);
         setConnectionState('connected');
         retryCount.current = 0;
         retryDelay.current = INITIAL_RETRY_DELAY;
         lastMessageTime.current = Date.now();
         startHeartbeat();
+        
+        // Send a ping immediately after connection
+        try {
+          ws.current?.send(JSON.stringify({ type: 'ping' }));
+        } catch (err) {
+          console.warn('Failed to send initial ping:', err);
+        }
+        
         onConnected?.();
       };
 
@@ -106,21 +128,42 @@ export const useWebSocket = ({
       };
 
       ws.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        console.error('WebSocket error for:', url, error);
         setConnectionState('error');
-        onError?.(`WebSocket error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        // Don't call onError here as it will be called in onclose
       };
 
       ws.current.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
+        console.log('WebSocket disconnected from:', url, 'Code:', event.code, 'Reason:', event.reason);
         setConnectionState('disconnected');
         clearTimeouts();
         onDisconnected?.();
 
-        if (!isManualClose.current && event.code !== 1000) { // Not a normal closure
+        // Handle different close codes
+        if (!isManualClose.current) {
+          let errorMessage = 'Connection closed';
+          switch (event.code) {
+            case 1000:
+              // Normal closure, no retry needed
+              return;
+            case 1006:
+              errorMessage = 'Connection lost unexpectedly';
+              break;
+            case 1008:
+              errorMessage = 'Invalid message format';
+              break;
+            case 1011:
+              errorMessage = 'Internal server error';
+              break;
+            default:
+              errorMessage = `Connection closed (code: ${event.code})`;
+          }
+
+          onError?.(errorMessage);
+
           if (retryCount.current < MAX_RETRIES) {
             const delay = Math.min(retryDelay.current * BACKOFF_FACTOR, MAX_RETRY_DELAY);
-            console.log(`Reconnecting in ${delay}ms (attempt ${retryCount.current + 1}/${MAX_RETRIES})`);
+            console.log(`Reconnecting to ${url} in ${delay}ms (attempt ${retryCount.current + 1}/${MAX_RETRIES})`);
             
             reconnectTimeout.current = setTimeout(() => {
               retryCount.current++;
@@ -128,8 +171,8 @@ export const useWebSocket = ({
               connect();
             }, delay);
           } else {
-            console.error('Max reconnection attempts reached');
-            onError?.('Max reconnection attempts reached. Please check your connection and try again.');
+            console.error(`Max reconnection attempts (${MAX_RETRIES}) reached for:`, url);
+            onError?.('Max reconnection attempts reached. Please try again later.');
           }
         }
         isManualClose.current = false;
