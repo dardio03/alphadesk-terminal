@@ -15,6 +15,12 @@ export interface BaseWebSocketMessage {
   data?: any;
 }
 
+export interface BinanceDepthResponse {
+  lastUpdateId: number;
+  bids: [string, string][];  // [price, quantity]
+  asks: [string, string][];  // [price, quantity]
+}
+
 export interface BinanceWebSocketMessage extends BaseWebSocketMessage {
   e?: string;    // Event type
   E?: number;    // Event time
