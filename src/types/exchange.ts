@@ -16,23 +16,16 @@ export interface BaseWebSocketMessage {
 }
 
 export interface BinanceWebSocketMessage extends BaseWebSocketMessage {
-  e?: string;  // Event type
-  E?: number;  // Event time
-  s?: string;  // Symbol
-  bids?: [string, string][];  // Bids for snapshot
-  asks?: [string, string][];  // Asks for snapshot
-  b?: [string, string][];  // Bids for update
-  a?: [string, string][];  // Asks for update
-  stream?: string;  // Stream name
-  data?: {
-    e?: string;  // Event type
-    E?: number;  // Event time
-    s?: string;  // Symbol
-    b?: [string, string][];  // Bids
-    a?: [string, string][];  // Asks
-  };
-  result?: null;  // Subscription response
-  id?: number;    // Request ID
+  e?: string;    // Event type
+  E?: number;    // Event time
+  s?: string;    // Symbol
+  U?: number;    // First update ID
+  u?: number;    // Final update ID
+  b?: [string, string][];  // Bids to be updated
+  a?: [string, string][];  // Asks to be updated
+  pu?: number;   // Previous final update ID
+  B?: [string, string][];  // Bids in snapshot
+  A?: [string, string][];  // Asks in snapshot
 }
 
 export interface CoinbaseWebSocketMessage extends BaseWebSocketMessage {
