@@ -16,6 +16,10 @@ export interface BaseWebSocketMessage {
 }
 
 export interface BinanceDepthResponse {
+  E: number;           // Message output time
+  T: number;          // Transaction time
+  s: string;          // Symbol
+  ps: string;         // Pair
   lastUpdateId: number;
   bids: [string, string][];  // [price, quantity]
   asks: [string, string][];  // [price, quantity]
@@ -24,14 +28,14 @@ export interface BinanceDepthResponse {
 export interface BinanceWebSocketMessage extends BaseWebSocketMessage {
   e?: string;    // Event type
   E?: number;    // Event time
+  T?: number;    // Transaction time
   s?: string;    // Symbol
-  U?: number;    // First update ID
-  u?: number;    // Final update ID
-  b?: [string, string][];  // Bids to be updated
-  a?: [string, string][];  // Asks to be updated
-  pu?: number;   // Previous final update ID
-  B?: [string, string][];  // Bids in snapshot
-  A?: [string, string][];  // Asks in snapshot
+  ps?: string;   // Pair
+  U?: number;    // First update ID in event
+  u?: number;    // Final update ID in event
+  pu?: number;   // Final update Id in last stream
+  b?: [string, string][];  // Bids to be updated - [Price level to be updated, Quantity]
+  a?: [string, string][];  // Asks to be updated - [Price level to be updated, Quantity]
 }
 
 export interface CoinbaseWebSocketMessage extends BaseWebSocketMessage {
