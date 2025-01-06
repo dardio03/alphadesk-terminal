@@ -2,13 +2,13 @@ import React, { useCallback, useEffect } from 'react';
 import useWebSocket from './useWebSocket';
 import { WebSocketHookProps, OrderBookData, WebSocketMessage, BinanceWebSocketMessage } from '../types/exchange';
 
-// Create WebSocket URL with stream name directly in the URL
+// Create WebSocket URL for futures market
 const getWebSocketUrl = (symbol: string) => 
-  `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth@100ms`;
+  `wss://fstream.binance.com/ws/${symbol.toLowerCase()}@depth@100ms`;
 
 const fetchSnapshot = async (symbol: string) => {
   try {
-    const response = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol.toUpperCase()}&limit=100`);
+    const response = await fetch(`https://fapi.binance.com/fapi/v1/depth?symbol=${symbol.toUpperCase()}&limit=100`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
