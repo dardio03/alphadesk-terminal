@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { OrderBookData, ExchangeHookResult, BinanceWebSocketMessage } from '../types/exchange';
+import { OrderBookData, ExchangeHookResult, BinanceDepthResponse } from '../types/exchange';
 import useBinanceWebSocket from './useBinanceWebSocket';
 
 const useBinanceOrderBook = (symbol: string): ExchangeHookResult => {
@@ -28,7 +28,7 @@ const useBinanceOrderBook = (symbol: string): ExchangeHookResult => {
       if (!response.ok) {
         throw new Error('Failed to fetch order book snapshot');
       }
-      const data: BinanceWebSocketMessage = await response.json();
+      const data: BinanceDepthResponse = await response.json();
       if (data.bids && data.asks) {
         return {
           bids: data.bids.map(([price, quantity]) => ({
