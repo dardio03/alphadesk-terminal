@@ -2,15 +2,32 @@ import React, { useState, useRef, useEffect } from 'react';
 
 interface WidgetHeaderProps {
   title: string;
+  widgetId?: string;
+  onClose?: () => void;
   onSettingsClick?: () => void;
+  onRefresh?: () => void;
+  onMove?: (direction: 'up' | 'down' | 'left' | 'right') => void;
   settingsContent?: React.ReactNode;
+  isDraggable?: boolean;
+  isResizable?: boolean;
 }
 
 const WidgetHeader: React.FC<WidgetHeaderProps> = ({
   title,
+  widgetId,
+  onClose,
   onSettingsClick,
-  settingsContent
+  onRefresh,
+  onMove,
+  settingsContent,
+  isDraggable = false,
+  isResizable = false
 }) => {
+  const handleMove = (direction: 'up' | 'down' | 'left' | 'right') => {
+    if (onMove) {
+      onMove(direction);
+    }
+  };
   const [showSettings, setShowSettings] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
 
@@ -37,9 +54,31 @@ const WidgetHeader: React.FC<WidgetHeaderProps> = ({
   };
 
   return (
-    <div className="widget-header">
-      <div className="title">{title}</div>
+    <div className={`widget-header ${isDraggable ? 'draggable' : ''}`}>
+      <div className="title">
+        {title}
+        {widgetId && <span className="widget-id">#{widgetId}</span>}
+      </div>
+      
       <div className="actions" ref={settingsRef}>
+        {onMove && (
+          <div className="move-controls">
+            <button onClick={() => handleMove('up')}>⬆️</button>
+            <button onClick={() => handleMove('down')}>⬇️</button>
+            <button onClick={() => handleMove('left')}>⬅️</button>
+            <button onClick={() => handleMove('right')}>➡️</button>
+          </div>
+        )}
+        
+        {onRefresh && (
+          <button className="refresh-button" onClick={onRefresh}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M23 4v6h-6M1 20v-6h6" />
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+            </svg>
+          </button>
+        )}
+
         {(onSettingsClick || settingsContent) && (
           <button className="settings-button" onClick={handleSettingsClick}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -48,6 +87,15 @@ const WidgetHeader: React.FC<WidgetHeaderProps> = ({
             </svg>
           </button>
         )}
+
+        {onClose && (
+          <button className="close-button" onClick={onClose}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+
         {showSettings && settingsContent && (
           <>
             <div className="settings-menu-backdrop" onClick={() => setShowSettings(false)} />
