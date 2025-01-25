@@ -1,5 +1,5 @@
 import React from 'react';
-import { WidgetHeader } from './WidgetHeader';
+import WidgetHeader from './WidgetHeader';
 
 interface WidgetContainerProps {
   title: string;
@@ -16,6 +16,9 @@ interface WidgetContainerProps {
   minHeight?: number;
   maxWidth?: number;
   maxHeight?: number;
+  widgetId?: string;
+  onPositionChange?: (position: { x: number, y: number }) => void;
+  onSizeChange?: (size: { width: number, height: number }) => void;
 }
 
 import { useState, useEffect } from 'react';

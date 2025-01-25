@@ -1,10 +1,10 @@
-import { OrderBook } from '../components/OrderBook';
-import { OrderBookChanges } from '../components/OrderBookChanges';
-import { BidAskRange } from '../components/BidAskRange';
-import { LastTrades } from '../components/LastTrades';
-import { PriceRange } from '../components/PriceRange';
-import { Watchlist } from '../components/Watchlist';
-import { TradingViewWidget } from '../components/TradingViewWidget';
+import OrderBook from '../components/OrderBook';
+import OrderBookChanges from '../components/OrderBookChanges';
+import BidAskRange from '../components/BidAskRange';
+import LastTrades from '../components/LastTrades';
+import PriceRange from '../components/PriceRange';
+import Watchlist from '../components/Watchlist';
+import TradingViewWidget from '../components/TradingViewWidget';
 
 type WidgetComponent = React.ComponentType<any>;
 type WidgetConfig = {
