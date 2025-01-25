@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import useBinanceOrderBook from '../hooks/useBinanceOrderBook';
-import useBybitOrderBook from '../hooks/useBybitOrderBook';
-import useCoinbaseOrderBook from '../hooks/useCoinbaseOrderBook';
-import useKrakenOrderBook from '../hooks/useKrakenOrderBook';
+import ExchangeFactory from '../utils/ExchangeService';
 import { OrderBookProps, OrderBookEntry } from '../types/exchange';
 import { formatPrice, formatQuantity, calculateSpreadPercentage } from '../utils/formatPrice';
 
@@ -30,102 +27,80 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
   ]);
   const [error, setError] = useState<string | null>(null);
 
-  // Use hooks for each exchange
-  const binance = useBinanceOrderBook(symbol);
-  const bybit = useBybitOrderBook(symbol);
-  const coinbase = useCoinbaseOrderBook(symbol);
-  const kraken = useKrakenOrderBook(symbol);
+  // Initialize exchanges
+  const [exchanges, setExchanges] = useState<{ [key: string]: ExchangeConnection }>({});
+  
+  useEffect(() => {
+    const initializeExchanges = async () => {
+      const exchangeInstances = Object.values(EXCHANGES).reduce((acc, exchange) => {
+        acc[exchange] = ExchangeFactory.getExchange(exchange);
+        return acc;
+      }, {} as { [key: string]: ExchangeConnection });
+      
+      setExchanges(exchangeInstances);
+      
+      // Connect to all enabled exchanges
+      enabledExchanges.forEach(exchange => {
+        exchangeInstances[exchange].connect();
+        exchangeInstances[exchange].subscribe(symbol);
+        exchangeInstances[exchange].onOrderBookUpdate((data) => {
+          // Handle order book updates
+        });
+        exchangeInstances[exchange].onError((error) => {
+          setError(error.message);
+        });
+      });
+    };
+
+    initializeExchanges();
+
+    return () => {
+      // Cleanup
+      Object.values(exchanges).forEach(exchange => {
+        exchange.unsubscribe(symbol);
+        exchange.disconnect();
+      });
+    };
+  }, [symbol, enabledExchanges]);
 
   const getConnectionStatus = (exchange: Exchange) => {
-    switch (exchange) {
-      case EXCHANGES.BINANCE:
-        return binance.connectionState;
-      case EXCHANGES.COINBASE:
-        return coinbase.connectionState;
-      case EXCHANGES.BYBIT:
-        return bybit.connectionState;
-      case EXCHANGES.KRAKEN:
-        return kraken.connectionState;
-      default:
-        return 'unknown';
-    }
+    return exchanges[exchange]?.getStatus() || 'disconnected';
   };
 
   // Set error if any exchange has an error
   useEffect(() => {
-    const errors = [binance.error, bybit.error, coinbase.error, kraken.error].filter(Boolean);
-    if (errors.length > 0) {
-      setError(errors[0]);
+    const errorMessages = Object.values(exchanges)
+      .map(exchange => exchange.getStatus() === 'error' ? 'Connection error' : null)
+      .filter(Boolean);
+    
+    if (errorMessages.length > 0) {
+      setError(errorMessages[0]);
     } else {
       setError(null);
     }
-  }, [binance.error, bybit.error, coinbase.error]);
+  }, [exchanges]);
 
-  // Combine and process order book data
+  import { dataAggregator } from '../utils/DataAggregationService';
+
+// Combine and process order book data
   const { bids, asks } = useMemo(() => {
-    const allBids: (OrderBookEntry & { exchange: Exchange })[] = [];
-    const allAsks: (OrderBookEntry & { exchange: Exchange })[] = [];
+    const exchangeData = enabledExchanges
+      .map(exchange => exchanges[exchange]?.getOrderBookData())
+      .filter(Boolean) as OrderBookData[];
 
-    const addExchangeOrders = (orders: OrderBookEntry[], exchange: Exchange) => {
-      return orders.map(order => ({ ...order, exchange }));
-    };
+    if (exchangeData.length > 0) {
+      const normalizedData = exchangeData.map(data => dataAggregator.normalizeData(data));
+      const aggregatedData = dataAggregator.aggregateData(normalizedData);
+      dataAggregator.cacheData('currentOrderBook', aggregatedData);
 
-    if (enabledExchanges.includes(EXCHANGES.BINANCE)) {
-      allBids.push(...addExchangeOrders(binance.orderBook.bids, EXCHANGES.BINANCE));
-      allAsks.push(...addExchangeOrders(binance.orderBook.asks, EXCHANGES.BINANCE));
+      return {
+        bids: aggregatedData.bids.map(bid => ({ ...bid, exchanges: ['aggregated'] })),
+        asks: aggregatedData.asks.map(ask => ({ ...ask, exchanges: ['aggregated'] }))
+      };
     }
 
-    if (enabledExchanges.includes(EXCHANGES.BYBIT)) {
-      allBids.push(...addExchangeOrders(bybit.orderBook.bids, EXCHANGES.BYBIT));
-      allAsks.push(...addExchangeOrders(bybit.orderBook.asks, EXCHANGES.BYBIT));
-    }
-
-    if (enabledExchanges.includes(EXCHANGES.COINBASE)) {
-      allBids.push(...addExchangeOrders(coinbase.orderBook.bids, EXCHANGES.COINBASE));
-      allAsks.push(...addExchangeOrders(coinbase.orderBook.asks, EXCHANGES.COINBASE));
-    }
-
-    if (enabledExchanges.includes(EXCHANGES.KRAKEN)) {
-      allBids.push(...addExchangeOrders(kraken.orderBook.bids, EXCHANGES.KRAKEN));
-      allAsks.push(...addExchangeOrders(kraken.orderBook.asks, EXCHANGES.KRAKEN));
-    }
-
-    // Aggregate and sort bids
-    const aggregatedBids: AggregatedOrderBookEntry[] = allBids
-      .reduce<AggregatedOrderBookEntry[]>((acc, bid) => {
-        const existingBid = acc.find(b => b.price === bid.price);
-        if (existingBid) {
-          existingBid.quantity += bid.quantity;
-          existingBid.exchanges = [...existingBid.exchanges, bid.exchange];
-        } else {
-          acc.push({ ...bid, exchanges: [bid.exchange] });
-        }
-        return acc;
-      }, [])
-      .sort((a, b) => b.price - a.price);
-
-    // Aggregate and sort asks
-    const aggregatedAsks: AggregatedOrderBookEntry[] = allAsks
-      .reduce<AggregatedOrderBookEntry[]>((acc, ask) => {
-        const existingAsk = acc.find(a => a.price === ask.price);
-        if (existingAsk) {
-          existingAsk.quantity += ask.quantity;
-          existingAsk.exchanges = [...existingAsk.exchanges, ask.exchange];
-        } else {
-          acc.push({ ...ask, exchanges: [ask.exchange] });
-        }
-        return acc;
-      }, [])
-      .sort((a, b) => a.price - b.price);
-
-    return { bids: aggregatedBids, asks: aggregatedAsks };
-  }, [
-    enabledExchanges,
-    binance.orderBook,
-    bybit.orderBook,
-    coinbase.orderBook,
-    kraken.orderBook
-  ]);
+    return { bids: [], asks: [] };
+  }, [enabledExchanges, exchanges]);
 
   const handleToggleExchange = (exchange: Exchange) => {
     setEnabledExchanges(prev => {

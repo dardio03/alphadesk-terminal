@@ -56,6 +56,8 @@ interface TradingViewWidgetProps {
   hide_top_toolbar?: boolean;
   hide_volume?: boolean;
   container_id?: string;
+  onError?: (error: Error) => void;
+  fallback?: React.ReactNode;
 }
 
 const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({
@@ -78,10 +80,13 @@ const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({
   save_image = true,
   hide_top_toolbar = false,
   hide_volume = false,
-  container_id = 'tradingview_widget'
+  container_id = 'tradingview_widget',
+  onError,
+  fallback
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<any>(null);
+  const [hasError, setHasError] = useState(false);
 
   // Handle resize
   useEffect(() => {
@@ -164,7 +169,15 @@ const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({
     };
 
     // Load script and initialize widget
-    loadTradingView().then(initWidget);
+    loadTradingView()
+      .then(initWidget)
+      .catch((error) => {
+        setHasError(true);
+        if (onError) {
+          onError(error);
+        }
+        console.error('Failed to load TradingView widget:', error);
+      });
 
     // Cleanup
     return () => {
@@ -185,6 +198,10 @@ const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({
     // height,
     // autosize,
   ]);
+
+  if (hasError && fallback) {
+    return <>{fallback}</>;
+  }
 
   return (
     <div
