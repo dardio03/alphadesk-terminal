@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import ExchangeFactory from '../utils/ExchangeService';
 import { OrderBookProps, OrderBookEntry } from '../types/exchange';
 import { formatPrice, formatQuantity, calculateSpreadPercentage } from '../utils/formatPrice';
+import { dataAggregator } from '../utils/DataAggregationService';
 
 import './OrderBook.css';
 
@@ -80,9 +81,7 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
     }
   }, [exchanges]);
 
-  import { dataAggregator } from '../utils/DataAggregationService';
-
-// Combine and process order book data
+  // Combine and process order book data
   const { bids, asks } = useMemo(() => {
     const exchangeData = enabledExchanges
       .map(exchange => exchanges[exchange]?.getOrderBookData())
