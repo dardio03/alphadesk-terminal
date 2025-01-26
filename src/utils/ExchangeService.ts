@@ -1,4 +1,4 @@
-interface ExchangeConnection {
+export interface ExchangeConnection {
   connect(): Promise<void>;
   disconnect(): void;
   reconnect(): void;
@@ -10,13 +10,13 @@ interface ExchangeConnection {
   getOrderBookData(): OrderBookData | null;
 }
 
-interface OrderBookData {
+export interface OrderBookData {
   bids: OrderBookEntry[];
   asks: OrderBookEntry[];
   timestamp: number;
 }
 
-interface OrderBookEntry {
+export interface OrderBookEntry {
   price: number;
   quantity: number;
 }

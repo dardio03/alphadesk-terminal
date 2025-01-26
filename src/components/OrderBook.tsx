@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import ExchangeFactory from '../utils/ExchangeService';
+import ExchangeFactory, { ExchangeConnection, OrderBookData } from '../utils/ExchangeService';
+import { dataAggregator } from '../utils/DataAggregationService';
 import { OrderBookProps, OrderBookEntry } from '../types/exchange';
 import { formatPrice, formatQuantity, calculateSpreadPercentage } from '../utils/formatPrice';
 import { dataAggregator } from '../utils/DataAggregationService';
@@ -44,10 +45,10 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
       enabledExchanges.forEach(exchange => {
         exchangeInstances[exchange].connect();
         exchangeInstances[exchange].subscribe(symbol);
-        exchangeInstances[exchange].onOrderBookUpdate((data) => {
+        exchangeInstances[exchange].onOrderBookUpdate((data: OrderBookData) => {
           // Handle order book updates
         });
-        exchangeInstances[exchange].onError((error) => {
+        exchangeInstances[exchange].onError((error: Error) => {
           setError(error.message);
         });
       });
@@ -93,8 +94,8 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
       dataAggregator.cacheData('currentOrderBook', aggregatedData);
 
       return {
-        bids: aggregatedData.bids.map(bid => ({ ...bid, exchanges: ['aggregated'] })),
-        asks: aggregatedData.asks.map(ask => ({ ...ask, exchanges: ['aggregated'] }))
+        bids: aggregatedData.bids.map((bid: OrderBookEntry) => ({ ...bid, exchanges: ['aggregated'] })),
+        asks: aggregatedData.asks.map((ask: OrderBookEntry) => ({ ...ask, exchanges: ['aggregated'] }))
       };
     }
 
