@@ -3,7 +3,6 @@ import ExchangeFactory, { ExchangeConnection, OrderBookData } from '../utils/Exc
 import { dataAggregator } from '../utils/DataAggregationService';
 import { OrderBookProps, OrderBookEntry } from '../types/exchange';
 import { formatPrice, formatQuantity, calculateSpreadPercentage } from '../utils/formatPrice';
-import { dataAggregator } from '../utils/DataAggregationService';
 
 import './OrderBook.css';
 
@@ -127,17 +126,7 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
             onClick={() => {
               const status = getConnectionStatus(exchange);
               if (status === 'disconnected' || status === 'error') {
-                switch (exchange) {
-                  case EXCHANGES.BINANCE:
-                    binance.reconnect?.();
-                    break;
-                  case EXCHANGES.BYBIT:
-                    bybit.reconnect?.();
-                    break;
-                  case EXCHANGES.COINBASE:
-                    coinbase.reconnect?.();
-                    break;
-                }
+                exchanges[exchange]?.reconnect?.();
               }
             }}
             title={
