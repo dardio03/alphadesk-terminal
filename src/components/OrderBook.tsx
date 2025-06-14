@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import ExchangeFactory, { ExchangeConnection, OrderBookData } from '../utils/ExchangeService';
+import aggregatorService from '../services/aggregatorService';
 import { dataAggregator } from '../utils/DataAggregationService';
 import { OrderBookProps, OrderBookEntry } from '../types/exchange';
 import { formatPrice, formatQuantity, calculateSpreadPercentage } from '../utils/formatPrice';
@@ -32,14 +33,21 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
   const [exchanges, setExchanges] = useState<{ [key: string]: ExchangeConnection }>({});
   
   useEffect(() => {
+    const handleError = (payload: { message: string }) => {
+      setError(payload.message);
+    };
+
+    aggregatorService.subscribe(symbol);
+    aggregatorService.on('ERROR', handleError);
+
     const initializeExchanges = async () => {
       const exchangeInstances = Object.values(EXCHANGES).reduce((acc, exchange) => {
         acc[exchange] = ExchangeFactory.getExchange(exchange);
         return acc;
       }, {} as { [key: string]: ExchangeConnection });
-      
+
       setExchanges(exchangeInstances);
-      
+
       // Connect to all enabled exchanges
       enabledExchanges.forEach(exchange => {
         exchangeInstances[exchange].connect();
@@ -56,13 +64,18 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
     initializeExchanges();
 
     return () => {
+      aggregatorService.off('ERROR', handleError);
       // Cleanup
       Object.values(exchanges).forEach(exchange => {
         exchange.unsubscribe(symbol);
         exchange.disconnect();
       });
     };
-  }, [symbol, enabledExchanges]);
+  }, [symbol]);
+
+  useEffect(() => {
+    aggregatorService.updateExchanges(enabledExchanges);
+  }, [enabledExchanges]);
 
   const getConnectionStatus = (exchange: Exchange) => {
     return exchanges[exchange]?.getStatus() || 'disconnected';

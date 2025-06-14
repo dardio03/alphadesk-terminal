@@ -46,6 +46,14 @@ class AggregatorService extends EventEmitter {
       data: { key, value }
     });
   }
+
+  subscribe(symbol: string) {
+    this.worker.postMessage({ type: 'UPDATE_SYMBOL', payload: { symbol } });
+  }
+
+  updateExchanges(exchanges: string[]) {
+    this.worker.postMessage({ type: 'UPDATE_EXCHANGES', payload: { exchanges } });
+  }
 }
 
 export const aggregatorService = new AggregatorService();
