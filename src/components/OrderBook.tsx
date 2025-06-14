@@ -126,7 +126,7 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
             onClick={() => {
               const status = getConnectionStatus(exchange);
               if (status === 'disconnected' || status === 'error') {
-                exchanges[exchange]?.reconnect?.();
+                exchanges[exchange].reconnect?.();
               }
             }}
             title={
