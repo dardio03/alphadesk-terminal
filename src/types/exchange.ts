@@ -40,6 +40,7 @@ export interface BinanceWebSocketMessage extends BaseWebSocketMessage {
 
 export interface CoinbaseWebSocketMessage extends BaseWebSocketMessage {
   type: string;
+  product_id?: string;
   product_ids?: string[];
   channels?: string[];
   bids?: [string, string][];
@@ -56,13 +57,6 @@ export interface ExchangeHookResult {
   reconnect?: () => void;
 }
 
-export interface CoinbaseWebSocketMessage {
-  type: string;
-  product_id?: string;
-  bids?: [string, string][];  // [price, size]
-  asks?: [string, string][];  // [price, size]
-  changes?: [string, string, string][];  // [side, price, size]
-}
 
 export interface WebSocketHookProps {
   symbol: string;
