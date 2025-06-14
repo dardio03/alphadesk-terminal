@@ -1,4 +1,4 @@
-import { WidgetConfig } from './WidgetRegistry';
+import { WidgetConfig, getWidgetConfig } from './WidgetRegistry';
 
 interface WidgetLayout {
   widgetId: string;

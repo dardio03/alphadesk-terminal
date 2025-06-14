@@ -1,3 +1,4 @@
+import React from 'react';
 import OrderBook from '../components/OrderBook';
 import OrderBookChanges from '../components/OrderBookChanges';
 import BidAskRange from '../components/BidAskRange';
