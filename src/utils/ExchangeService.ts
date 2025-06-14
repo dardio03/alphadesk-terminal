@@ -184,3 +184,5 @@ class BinanceExchange extends BaseExchange {
 
 // Register exchanges at startup
 ExchangeFactory.registerExchange('BINANCE', new BinanceExchange({}));
+
+export default ExchangeFactory;
