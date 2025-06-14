@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import ExchangeFactory, { ExchangeConnection, OrderBookData } from '../utils/ExchangeService';
-import { dataAggregator } from '../utils/DataAggregationService';
-import { OrderBookProps, OrderBookEntry } from '../types/exchange';
-import { formatPrice, formatQuantity, calculateSpreadPercentage } from '../utils/formatPrice';
+import React, { useState, useEffect, useRef } from 'react';
+import aggregatorService, { ExchangeId } from '../services/aggregatorService';
+import { OrderBookData, OrderBookEntry } from '../utils/ExchangeService';
+import { OrderBookProps } from '../types/exchange';
+import { formatPrice, formatQuantity } from '../utils/formatPrice';
 
 import './OrderBook.css';
 
@@ -13,7 +13,7 @@ export const EXCHANGES = {
   KRAKEN: 'KRAKEN'
 } as const;
 
-type Exchange = typeof EXCHANGES[keyof typeof EXCHANGES];
+type Exchange = ExchangeId;
 
 interface AggregatedOrderBookEntry extends OrderBookEntry {
   exchanges: string[];
@@ -28,78 +28,35 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
   ]);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize exchanges
-  const [exchanges, setExchanges] = useState<{ [key: string]: ExchangeConnection }>({});
-  
   useEffect(() => {
-    const initializeExchanges = async () => {
-      const exchangeInstances = Object.values(EXCHANGES).reduce((acc, exchange) => {
-        acc[exchange] = ExchangeFactory.getExchange(exchange);
-        return acc;
-      }, {} as { [key: string]: ExchangeConnection });
-      
-      setExchanges(exchangeInstances);
-      
-      // Connect to all enabled exchanges
-      enabledExchanges.forEach(exchange => {
-        exchangeInstances[exchange].connect();
-        exchangeInstances[exchange].subscribe(symbol);
-        exchangeInstances[exchange].onOrderBookUpdate((data: OrderBookData) => {
-          // Handle order book updates
-        });
-        exchangeInstances[exchange].onError((error: Error) => {
-          setError(error.message);
-        });
-      });
-    };
+    aggregatorService.subscribe(symbol, enabledExchanges);
 
-    initializeExchanges();
+    const handleError = (evt: { exchange: string; error: Error }) => setError(evt.error.message);
+    aggregatorService.on('error', handleError);
 
     return () => {
-      // Cleanup
-      Object.values(exchanges).forEach(exchange => {
-        exchange.unsubscribe(symbol);
-        exchange.disconnect();
-      });
+      aggregatorService.off('error', handleError);
+      aggregatorService.unsubscribe(symbol);
     };
   }, [symbol, enabledExchanges]);
 
   const getConnectionStatus = (exchange: Exchange) => {
-    return exchanges[exchange]?.getStatus() || 'disconnected';
+    return aggregatorService.getStatus(exchange as ExchangeId);
   };
 
-  // Set error if any exchange has an error
+  const [bids, setBids] = useState<AggregatedOrderBookEntry[]>([]);
+  const [asks, setAsks] = useState<AggregatedOrderBookEntry[]>([]);
+
   useEffect(() => {
-    const errorMessages = Object.values(exchanges)
-      .map(exchange => exchange.getStatus() === 'error' ? 'Connection error' : null)
-      .filter(Boolean);
-    
-    if (errorMessages.length > 0) {
-      setError(errorMessages[0]);
-    } else {
-      setError(null);
-    }
-  }, [exchanges]);
-
-  // Combine and process order book data
-  const { bids, asks } = useMemo(() => {
-    const exchangeData = enabledExchanges
-      .map(exchange => exchanges[exchange]?.getOrderBookData())
-      .filter(Boolean) as OrderBookData[];
-
-    if (exchangeData.length > 0) {
-      const normalizedData = exchangeData.map(data => dataAggregator.normalizeData(data));
-      const aggregatedData = dataAggregator.aggregateData(normalizedData);
-      dataAggregator.cacheData('currentOrderBook', aggregatedData);
-
-      return {
-        bids: aggregatedData.bids.map((bid: OrderBookEntry) => ({ ...bid, exchanges: ['aggregated'] })),
-        asks: aggregatedData.asks.map((ask: OrderBookEntry) => ({ ...ask, exchanges: ['aggregated'] }))
-      };
-    }
-
-    return { bids: [], asks: [] };
-  }, [enabledExchanges, exchanges]);
+    const handleUpdate = (data: OrderBookData) => {
+      setBids(data.bids.map(b => ({ ...b, exchanges: ['aggregated'] })));
+      setAsks(data.asks.map(a => ({ ...a, exchanges: ['aggregated'] })));
+    };
+    aggregatorService.on('orderBook', handleUpdate);
+    return () => {
+      aggregatorService.off('orderBook', handleUpdate);
+    };
+  }, []);
 
   const handleToggleExchange = (exchange: Exchange) => {
     setEnabledExchanges(prev => {
@@ -126,7 +83,7 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
             onClick={() => {
               const status = getConnectionStatus(exchange);
               if (status === 'disconnected' || status === 'error') {
-                exchanges[exchange].reconnect?.();
+                aggregatorService.reconnect(exchange as ExchangeId);
               }
             }}
             title={
