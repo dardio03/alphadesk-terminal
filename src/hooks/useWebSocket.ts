@@ -37,6 +37,7 @@ export const useWebSocket = ({
   const isManualClose = useRef<boolean>(false);
   const lastMessageTime = useRef<number>(Date.now());
   const heartbeatInterval = useRef<NodeJS.Timeout | null>(null);
+  const startHeartbeatRef = useRef<() => void>(() => {});
 
   const clearTimeouts = useCallback(() => {
     if (reconnectTimeout.current) {
@@ -60,35 +61,6 @@ export const useWebSocket = ({
     retryDelay.current = INITIAL_RETRY_DELAY;
   }, [clearTimeouts]);
 
-  const startHeartbeat = useCallback(() => {
-    if (heartbeatInterval.current) {
-      clearInterval(heartbeatInterval.current);
-    }
-
-    heartbeatInterval.current = setInterval(() => {
-      const now = Date.now();
-      if (now - lastMessageTime.current > 10000) { // 10 seconds without messages
-        console.warn('No messages received for 10 seconds from:', url);
-        
-        // Try to send a ping before reconnecting
-        try {
-          if (ws.current?.readyState === WebSocket.OPEN) {
-            ws.current.send(JSON.stringify({ type: 'ping' }));
-            lastMessageTime.current = now;
-          } else {
-            console.warn('WebSocket not open, reconnecting...');
-            resetConnection();
-            connect();
-          }
-        } catch (err) {
-          console.error('Failed to send ping, reconnecting...', err);
-          resetConnection();
-          connect();
-        }
-      }
-    }, 3000); // Check every 3 seconds
-  }, []);
-
   const connect = useCallback(() => {
     try {
       if (ws.current?.readyState === WebSocket.OPEN) {
@@ -105,15 +77,15 @@ export const useWebSocket = ({
         retryCount.current = 0;
         retryDelay.current = INITIAL_RETRY_DELAY;
         lastMessageTime.current = Date.now();
-        startHeartbeat();
-        
+        startHeartbeatRef.current();
+
         // Send a ping immediately after connection
         try {
           ws.current?.send(JSON.stringify({ type: 'ping' }));
         } catch (err) {
           console.warn('Failed to send initial ping:', err);
         }
-        
+
         onConnected?.();
       };
 
@@ -164,7 +136,7 @@ export const useWebSocket = ({
           if (retryCount.current < MAX_RETRIES) {
             const delay = Math.min(retryDelay.current * BACKOFF_FACTOR, MAX_RETRY_DELAY);
             console.log(`Reconnecting to ${url} in ${delay}ms (attempt ${retryCount.current + 1}/${MAX_RETRIES})`);
-            
+
             reconnectTimeout.current = setTimeout(() => {
               retryCount.current++;
               retryDelay.current = delay;
@@ -181,7 +153,39 @@ export const useWebSocket = ({
       setConnectionState('error');
       onError?.(`Failed to connect: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [url, onMessage, onError, onConnected, onDisconnected, startHeartbeat, clearTimeouts]);
+  }, [url, onMessage, onError, onConnected, onDisconnected, startHeartbeatRef, clearTimeouts]);
+
+  const startHeartbeat = useCallback(() => {
+    if (heartbeatInterval.current) {
+      clearInterval(heartbeatInterval.current);
+    }
+
+    heartbeatInterval.current = setInterval(() => {
+      const now = Date.now();
+      if (now - lastMessageTime.current > 10000) { // 10 seconds without messages
+        console.warn('No messages received for 10 seconds from:', url);
+        
+        // Try to send a ping before reconnecting
+        try {
+          if (ws.current?.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify({ type: 'ping' }));
+            lastMessageTime.current = now;
+          } else {
+            console.warn('WebSocket not open, reconnecting...');
+            resetConnection();
+            connect();
+          }
+        } catch (err) {
+          console.error('Failed to send ping, reconnecting...', err);
+          resetConnection();
+          connect();
+        }
+      }
+    }, 3000); // Check every 3 seconds
+  }, [url, connect, resetConnection]);
+
+  startHeartbeatRef.current = startHeartbeat;
+
 
   const sendMessage = useCallback((message: any) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
