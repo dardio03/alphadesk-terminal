@@ -303,14 +303,6 @@ const PriceRange: React.FC<PriceRangeProps> = ({
     return <div>Error: {error}</div>;
   }
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (error) {
-    return <div>{error}</div>;
-  }
-
   return (
     <Container ref={containerRef} width={width}>
       <Bar />
