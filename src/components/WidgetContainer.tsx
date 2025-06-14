@@ -6,7 +6,7 @@ interface WidgetContainerProps {
   children: React.ReactNode;
   className?: string;
   onClose?: () => void;
-  onSettings?: () => void;
+  onSettingsClick?: () => void;
   onRefresh?: () => void;
   isDraggable?: boolean;
   isResizable?: boolean;
@@ -29,7 +29,7 @@ export const WidgetContainer: React.FC<WidgetContainerProps> = ({
   children,
   className = '',
   onClose,
-  onSettings,
+  onSettingsClick,
   onRefresh,
   isDraggable = false,
   isResizable = false,
@@ -162,7 +162,7 @@ export const WidgetContainer: React.FC<WidgetContainerProps> = ({
       <WidgetHeader
         title={title}
         onClose={onClose}
-        onSettings={onSettings}
+        onSettingsClick={onSettingsClick}
         onRefresh={onRefresh}
       />
       <div className="widget-content">

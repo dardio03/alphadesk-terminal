@@ -11,11 +11,11 @@ class DataAggregationService {
 
   private cleanCache() {
     const now = Date.now();
-    for (const [key, value] of this.cache.entries()) {
+    this.cache.forEach((value, key) => {
       if (now - value.timestamp > this.cacheTTL) {
         this.cache.delete(key);
       }
-    }
+    });
   }
 
   normalizeData(data: OrderBookData): OrderBookData {

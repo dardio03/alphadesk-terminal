@@ -16,7 +16,7 @@ export const EXCHANGES = {
 type Exchange = typeof EXCHANGES[keyof typeof EXCHANGES];
 
 interface AggregatedOrderBookEntry extends OrderBookEntry {
-  exchanges: Exchange[];
+  exchanges: string[];
 }
 
 const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '' }) => {

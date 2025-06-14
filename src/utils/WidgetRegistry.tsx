@@ -8,7 +8,7 @@ import Watchlist from '../components/Watchlist';
 import TradingViewWidget from '../components/TradingViewWidget';
 
 type WidgetComponent = React.ComponentType<any>;
-type WidgetConfig = {
+export type WidgetConfig = {
   component: WidgetComponent;
   defaultProps: Record<string, any>;
   defaultSize: { width: number; height: number };
