@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
-import aggregatorService, { ExchangeId } from "../services/aggregatorService";
-import { OrderBookData, OrderBookEntry } from "../utils/ExchangeService";
-import { OrderBookProps } from "../types/exchange";
-import { formatPrice, formatQuantity } from "../utils/formatPrice";
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import ExchangeFactory, { ExchangeConnection, OrderBookData } from '../utils/ExchangeService';
-import aggregatorService from '../services/aggregatorService';
-import { dataAggregator } from '../utils/DataAggregationService';
-import { OrderBookProps, OrderBookEntry } from '../types/exchange';
-import { formatPrice, formatQuantity, calculateSpreadPercentage } from '../utils/formatPrice';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import aggregatorService, { ExchangeId } from '../services/aggregatorService';
+import ExchangeFactory, {
+  ExchangeConnection,
+  OrderBookData,
+  OrderBookEntry,
+} from '../utils/ExchangeService';
+import { OrderBookProps } from '../types/exchange';
+import { formatPrice, formatQuantity } from '../utils/formatPrice';
 
 import "./OrderBook.css";
 
