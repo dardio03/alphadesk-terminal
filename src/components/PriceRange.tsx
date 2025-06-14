@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { formatPrice } from '../utils/formatPrice';
-import { Typography, Widget } from './common';
+import { Typography } from './common';
 import { theme } from '../styles/theme';
 
 interface ExchangeData {
@@ -17,10 +17,8 @@ interface PriceRangeProps {
   width?: number;
 }
 
-import useBinanceOrderBook from '../hooks/useBinanceOrderBook';
-import useBybitOrderBook from '../hooks/useBybitOrderBook';
-import useCoinbaseOrderBook from '../hooks/useCoinbaseOrderBook';
-import useKrakenOrderBook from '../hooks/useKrakenOrderBook';
+import aggregatorService, { ExchangeId } from '../services/aggregatorService';
+import { OrderBookData } from '../utils/ExchangeService';
 
 const EXCHANGE_ICONS = {
   binance: 'https://assets.coingecko.com/markets/images/52/small/binance.jpg?1519353250',
@@ -168,89 +166,53 @@ const PriceRange: React.FC<PriceRangeProps> = ({
   const [previousPrices, setPreviousPrices] = useState<Record<string, number>>({});
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize order book hooks
-  const binance = useBinanceOrderBook(symbol);
-  const bybit = useBybitOrderBook(symbol);
-  const coinbase = useCoinbaseOrderBook(symbol);
-  const kraken = useKrakenOrderBook(symbol);
+  const [exchangeBooks, setExchangeBooks] = useState<{ [key in ExchangeId]?: OrderBookData }>({});
+  const [error, setError] = useState<string | null>(null);
 
-  // Check for errors from any exchange
-  const error = useMemo(() => {
-    const errors = [
-      binance.error,
-      bybit.error,
-      coinbase.error,
-      kraken.error
-    ].filter(Boolean);
-    return errors.length > 0 ? errors[0] : null;
-  }, [binance.error, bybit.error, coinbase.error, kraken.error]);
+  useEffect(() => {
+    const handleExchange = (evt: { exchange: ExchangeId; data: OrderBookData }) => {
+      setExchangeBooks(prev => ({ ...prev, [evt.exchange]: evt.data }));
+    };
+    const handleError = (evt: { exchange: string; error: Error }) => setError(evt.error.message);
 
-  // Check if any exchange is still loading
+    aggregatorService.subscribe(symbol, ['BINANCE', 'BYBIT', 'COINBASE', 'KRAKEN']);
+    aggregatorService.on('exchange', handleExchange);
+    aggregatorService.on('error', handleError);
+
+    return () => {
+      aggregatorService.off('exchange', handleExchange);
+      aggregatorService.off('error', handleError);
+      aggregatorService.unsubscribe(symbol);
+    };
+  }, [symbol]);
+
   const loading = useMemo(() => {
-    return [
-      binance.connectionState,
-      bybit.connectionState,
-      coinbase.connectionState,
-      kraken.connectionState
-    ].some(state => state === 'connecting');
-  }, [binance.connectionState, bybit.connectionState, coinbase.connectionState, kraken.connectionState]);
+    return ['BINANCE', 'BYBIT', 'COINBASE', 'KRAKEN'].some(
+      ex => aggregatorService.getStatus(ex as ExchangeId) === 'connecting'
+    );
+  }, [exchangeBooks]);
 
   // Get best prices from each exchange
   const exchanges = useMemo(() => {
     const now = Date.now();
     const result: ExchangeData[] = [];
 
-    if (binance.orderBook.bids.length > 0 && binance.orderBook.asks.length > 0) {
-      const price = (binance.orderBook.bids[0].price + binance.orderBook.asks[0].price) / 2;
-      result.push({
-        id: 'binance',
-        name: 'Binance',
-        price,
-        icon: EXCHANGE_ICONS.binance,
-        timestamp: now
-      });
-    }
-
-    if (bybit.orderBook.bids.length > 0 && bybit.orderBook.asks.length > 0) {
-      const price = (bybit.orderBook.bids[0].price + bybit.orderBook.asks[0].price) / 2;
-      result.push({
-        id: 'bybit',
-        name: 'Bybit',
-        price,
-        icon: EXCHANGE_ICONS.bybit,
-        timestamp: now
-      });
-    }
-
-    if (coinbase.orderBook.bids.length > 0 && coinbase.orderBook.asks.length > 0) {
-      const price = (coinbase.orderBook.bids[0].price + coinbase.orderBook.asks[0].price) / 2;
-      result.push({
-        id: 'coinbase',
-        name: 'Coinbase',
-        price,
-        icon: EXCHANGE_ICONS.coinbase,
-        timestamp: now
-      });
-    }
-
-    if (kraken.orderBook.bids.length > 0 && kraken.orderBook.asks.length > 0) {
-      const price = (kraken.orderBook.bids[0].price + kraken.orderBook.asks[0].price) / 2;
-      result.push({
-        id: 'kraken',
-        name: 'Kraken',
-        price,
-        icon: EXCHANGE_ICONS.kraken,
-        timestamp: now
-      });
-    }
+    (Object.entries(exchangeBooks) as [ExchangeId, OrderBookData][]).forEach(([id, book]) => {
+      if (book.bids.length > 0 && book.asks.length > 0) {
+        const price = (book.bids[0].price + book.asks[0].price) / 2;
+        const key = id.toLowerCase();
+        result.push({
+          id: key,
+          name: id.charAt(0) + id.slice(1).toLowerCase(),
+          price,
+          icon: EXCHANGE_ICONS[key as keyof typeof EXCHANGE_ICONS],
+          timestamp: now
+        });
+      }
+    });
 
     return result;
-  }, [
-    binance.orderBook,
-    bybit.orderBook,
-    coinbase.orderBook,
-    kraken.orderBook
-  ]);
+  }, [exchangeBooks]);
 
   const { minPrice, maxPrice } = useMemo(() => {
     const prices = exchanges.map(e => e.price);

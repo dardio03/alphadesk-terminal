@@ -1,60 +1,121 @@
-import EventEmitter from 'eventemitter3';
-import aggregatorWorkerInstance from '@/index';
-import { AggregatorPayload } from '@/types/types';
-import { randomString } from '@/helpers/utils';
+import { EventEmitter } from "events";
+import ExchangeFactory, {
+  OrderBookData,
+  ExchangeConnection,
+  OrderBookEntry,
+} from "../utils/ExchangeService";
+
+function normalizeEntries(entries: OrderBookEntry[]): OrderBookEntry[] {
+  return entries
+    .filter((e) => e.price > 0 && e.quantity > 0)
+    .map((e) => ({
+      price: parseFloat(e.price.toFixed(2)),
+      quantity: parseFloat(e.quantity.toFixed(6)),
+    }))
+    .sort((a, b) => b.price - a.price);
+}
+
+function aggregateEntries(entries: OrderBookEntry[]): OrderBookEntry[] {
+  const aggregated = new Map<number, OrderBookEntry>();
+  entries.forEach((entry) => {
+    const existing = aggregated.get(entry.price);
+    if (existing) {
+      existing.quantity += entry.quantity;
+    } else {
+      aggregated.set(entry.price, { ...entry });
+    }
+  });
+  return Array.from(aggregated.values())
+    .sort((a, b) => b.price - a.price)
+    .slice(0, 100);
+}
+
+function aggregateData(dataSources: OrderBookData[]): OrderBookData {
+  return {
+    bids: aggregateEntries(dataSources.flatMap((d) => d.bids)),
+    asks: aggregateEntries(dataSources.flatMap((d) => d.asks)),
+    timestamp: Date.now(),
+  };
+}
+
+export type ExchangeId = "BINANCE" | "BYBIT" | "COINBASE" | "KRAKEN";
 
 class AggregatorService extends EventEmitter {
-  public worker: Worker;
+  private exchanges: { [key in ExchangeId]?: ExchangeConnection } = {};
+  private exchangeData: { [key in ExchangeId]?: OrderBookData } = {};
+  private enabled: ExchangeId[] = [];
+  private symbol: string = "BTCUSDT";
 
-  constructor() {
-    super();
-    this.worker = aggregatorWorkerInstance;
-    this.worker.addEventListener('message', event => {
-      this.emit(event.data.op, event.data.data, event.data.trackingId);
+  private ensureExchange(name: ExchangeId): ExchangeConnection {
+    if (!this.exchanges[name]) {
+      try {
+        this.exchanges[name] = ExchangeFactory.getExchange(name);
+      } catch {
+        const conn = ExchangeFactory.createExchange(name, {});
+        ExchangeFactory.registerExchange(name, conn);
+        this.exchanges[name] = conn;
+      }
+      const conn = this.exchanges[name]!;
+      conn.onOrderBookUpdate((data) => this.handleUpdate(name, data));
+      conn.onError((err) => this.emit("error", { exchange: name, error: err }));
+    }
+    return this.exchanges[name]!;
+  }
+
+  private handleUpdate(exchange: ExchangeId, data: OrderBookData) {
+    this.exchangeData[exchange] = {
+      bids: normalizeEntries(data.bids),
+      asks: normalizeEntries(data.asks),
+      timestamp: Date.now(),
+    };
+    this.emit("exchange", { exchange, data: this.exchangeData[exchange] });
+    const aggregated = aggregateData(
+      this.enabled
+        .map((e) => this.exchangeData[e])
+        .filter(Boolean) as OrderBookData[],
+    );
+    this.emit("orderBook", aggregated);
+  }
+
+  subscribe(symbol: string, exchanges: ExchangeId[]) {
+    this.symbol = symbol;
+    this.enabled = exchanges;
+    exchanges.forEach((name) => {
+      const conn = this.ensureExchange(name);
+      conn.connect();
+      conn.subscribe(symbol);
     });
   }
 
-  private dispatch(payload: AggregatorPayload) {
-    this.worker.postMessage(payload);
-  }
-
-  private dispatchAsync(payload: AggregatorPayload): Promise<any> {
-    const trackingId = randomString(8);
-    return new Promise(resolve => {
-      const listener = (event: MessageEvent) => {
-        if (event.data.trackingId === trackingId) {
-          this.worker.removeEventListener('message', listener);
-          resolve(event.data.data);
-        }
-      };
-      this.worker.addEventListener('message', listener);
-      this.worker.postMessage({ ...payload, trackingId });
+  updateExchanges(exchanges: ExchangeId[]) {
+    const toRemove = this.enabled.filter((e) => !exchanges.includes(e));
+    const toAdd = exchanges.filter((e) => !this.enabled.includes(e));
+    this.enabled = exchanges;
+    toRemove.forEach((e) => {
+      this.exchanges[e]?.unsubscribe(this.symbol);
+    });
+    toAdd.forEach((e) => {
+      const conn = this.ensureExchange(e);
+      conn.connect();
+      conn.subscribe(this.symbol);
     });
   }
 
-  connect(markets: string[]): Promise<any> {
-    return this.dispatchAsync({ op: 'connect', data: markets });
-  }
-
-  disconnect(markets: string[]): Promise<any> {
-    return this.dispatchAsync({ op: 'disconnect', data: markets });
-  }
-
-  configureAggregator(key: string, value: any): Promise<any> {
-    return this.dispatchAsync({
-      op: 'configureAggregator',
-      data: { key, value }
+  unsubscribe(symbol: string) {
+    this.enabled.forEach((e) => {
+      this.exchanges[e]?.unsubscribe(symbol);
     });
+    this.exchangeData = {};
   }
 
-  subscribe(symbol: string) {
-    this.worker.postMessage({ type: 'UPDATE_SYMBOL', payload: { symbol } });
+  getStatus(exchange: ExchangeId): string {
+    return this.exchanges[exchange]?.getStatus() || "disconnected";
   }
 
-  updateExchanges(exchanges: string[]) {
-    this.worker.postMessage({ type: 'UPDATE_EXCHANGES', payload: { exchanges } });
+  reconnect(exchange: ExchangeId) {
+    const conn = this.ensureExchange(exchange);
+    conn.reconnect();
   }
 }
 
-export const aggregatorService = new AggregatorService();
-export default aggregatorService;
+export default new AggregatorService();

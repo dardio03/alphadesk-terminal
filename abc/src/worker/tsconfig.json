@@ -1,8 +1,0 @@
-// ts-check-disable
-{
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "lib": ["esnext", "webworker"],
-	"types": ["vite/client"]
-  }
-}
