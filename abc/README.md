@@ -1,7 +1,7 @@
 
 # SignificantTrade
 
-Cryptocurrency market trades aggregator./
+Cryptocurrency market trades aggregator.
 
 Currently supporting Kucoin, BitMEX, Bitfinex, Binance, Coinbase, Bitstamp, Deribit, Huobi, Okex, Hitbtc, Poloniex, Bybit, Bitget, Bitunix, Mexc, Gate.io and Crypto.com ([see src/exchanges/](src/exchanges) for detail)
 
