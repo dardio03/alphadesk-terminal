@@ -33,11 +33,18 @@ const OrderBook: React.FC<OrderBookProps> = ({ symbol = 'BTCUSDT', className = '
   const [exchanges, setExchanges] = useState<{ [key: string]: ExchangeConnection }>({});
   
   useEffect(() => {
+    aggregatorService.subscribe(symbol);
+
+    return () => {
+      aggregatorService.unsubscribe(symbol);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleError = (payload: { message: string }) => {
       setError(payload.message);
     };
 
-    aggregatorService.subscribe(symbol);
     aggregatorService.on('ERROR', handleError);
 
     const initializeExchanges = async () => {
