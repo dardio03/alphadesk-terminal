@@ -41,7 +41,6 @@ const OrderBook: React.FC<OrderBookProps> = ({
 
   useEffect(() => {
     aggregatorService.subscribe(symbol, enabledExchanges);
-    aggregatorService.subscribe(symbol);
 
     return () => {
       aggregatorService.unsubscribe(symbol);
