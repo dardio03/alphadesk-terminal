@@ -6,7 +6,11 @@ import ExchangeFactory, {
   OrderBookEntry,
 } from '../utils/ExchangeService';
 import { OrderBookProps } from '../types/exchange';
-import { formatPrice, formatQuantity } from '../utils/formatPrice';
+import {
+  formatPrice,
+  formatQuantity,
+  calculateSpreadPercentage,
+} from '../utils/formatPrice';
 
 import "./OrderBook.css";
 
