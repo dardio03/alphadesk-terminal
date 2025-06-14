@@ -82,7 +82,6 @@ export interface OrderBookSettings {
 
 export interface PriceRangeProps {
   symbol: string;
-  interval?: string;
   height?: number;
 }
 

@@ -14,7 +14,6 @@ interface ExchangeData {
 
 interface PriceRangeProps {
   symbol: string;
-  interval?: string;
   width?: number;
 }
 
@@ -164,7 +163,6 @@ const Tooltip = styled.div`
 
 const PriceRange: React.FC<PriceRangeProps> = ({
   symbol,
-  interval = '1d',
   width = 800
 }) => {
   const [previousPrices, setPreviousPrices] = useState<Record<string, number>>({});
