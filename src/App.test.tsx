@@ -12,9 +12,9 @@ describe('App', () => {
     expect(orderBookElement).toBeInTheDocument();
   });
 
-  test('renders live price widget', () => {
-    const livePriceElement = screen.getByText(/Live Price/i);
-    expect(livePriceElement).toBeInTheDocument();
+  test('renders watchlist widget', () => {
+    const watchlistElement = screen.getByText(/Watchlist/i);
+    expect(watchlistElement).toBeInTheDocument();
   });
 
   test('renders price range widget', () => {
