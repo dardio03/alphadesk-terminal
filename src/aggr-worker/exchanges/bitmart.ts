@@ -169,12 +169,18 @@ export default class extends Exchange {
       }
     }
 
+    let emitted = false
+
     if (regularTrades.length > 0) {
       this.emitTrades(api.id, regularTrades)
+      emitted = true
     }
 
     if (liquidationTrades.length > 0) {
       this.emitLiquidations(api.id, liquidationTrades)
+      emitted = true
     }
+
+    return emitted
   }
 }

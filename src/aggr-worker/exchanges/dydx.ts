@@ -1,4 +1,4 @@
-import { Trade } from '../../types/types'
+import { Trade } from '@/types/types'
 import Exchange from '../exchange'
 
 export default class DYDX extends Exchange {

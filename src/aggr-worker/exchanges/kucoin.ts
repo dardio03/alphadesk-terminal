@@ -17,9 +17,10 @@ export default class KUCOIN extends Exchange {
       return this.endpoints.WS
     }
 
+    const proxy = (import.meta as any).env?.VITE_APP_PROXY_URL || ''
+
     return fetch(
-      import.meta.env.VITE_APP_PROXY_URL +
-        'https://api.kucoin.com/api/v1/bullet-public',
+      proxy + 'https://api.kucoin.com/api/v1/bullet-public',
       {
         method: 'POST'
       }
