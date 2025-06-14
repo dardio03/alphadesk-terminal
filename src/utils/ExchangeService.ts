@@ -101,6 +101,9 @@ abstract class BaseExchange implements ExchangeConnection {
 // Example implementation for Binance
 class BinanceExchange extends BaseExchange {
   private ws: WebSocket | null = null;
+  constructor(private config: any = {}) {
+    super();
+  }
 
   async connect(): Promise<void> {
     this.status = 'connecting';
@@ -116,8 +119,9 @@ class BinanceExchange extends BaseExchange {
         const data = JSON.parse(event.data);
         this.processMessage(data);
       };
-      this.ws.onerror = (error) => {
-        this.notifyError(new Error(error.message));
+      this.ws.onerror = (event) => {
+        const message = (event as unknown as { message?: string }).message;
+        this.notifyError(new Error(message || 'WebSocket error'));
       };
       this.ws.onclose = () => {
         this.status = 'disconnected';
@@ -182,7 +186,13 @@ class BinanceExchange extends BaseExchange {
   }
 }
 
+class BybitExchange extends BinanceExchange {}
+
+class CoinbaseExchange extends BinanceExchange {}
+
+class KrakenExchange extends BinanceExchange {}
+
 // Register exchanges at startup
-ExchangeFactory.registerExchange('BINANCE', new BinanceExchange({}));
+ExchangeFactory.registerExchange('BINANCE', new BinanceExchange());
 
 export default ExchangeFactory;
