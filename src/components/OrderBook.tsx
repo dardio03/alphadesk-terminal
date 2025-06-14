@@ -3,6 +3,12 @@ import aggregatorService, { ExchangeId } from "../services/aggregatorService";
 import { OrderBookData, OrderBookEntry } from "../utils/ExchangeService";
 import { OrderBookProps } from "../types/exchange";
 import { formatPrice, formatQuantity } from "../utils/formatPrice";
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import ExchangeFactory, { ExchangeConnection, OrderBookData } from '../utils/ExchangeService';
+import aggregatorService from '../services/aggregatorService';
+import { dataAggregator } from '../utils/DataAggregationService';
+import { OrderBookProps, OrderBookEntry } from '../types/exchange';
+import { formatPrice, formatQuantity, calculateSpreadPercentage } from '../utils/formatPrice';
 
 import "./OrderBook.css";
 
@@ -33,6 +39,40 @@ const OrderBook: React.FC<OrderBookProps> = ({
 
   useEffect(() => {
     aggregatorService.subscribe(symbol, enabledExchanges);
+    aggregatorService.subscribe(symbol);
+
+    return () => {
+      aggregatorService.unsubscribe(symbol);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleError = (payload: { message: string }) => {
+      setError(payload.message);
+    };
+
+    aggregatorService.on('ERROR', handleError);
+
+    const initializeExchanges = async () => {
+      const exchangeInstances = Object.values(EXCHANGES).reduce((acc, exchange) => {
+        acc[exchange] = ExchangeFactory.getExchange(exchange);
+        return acc;
+      }, {} as { [key: string]: ExchangeConnection });
+
+      setExchanges(exchangeInstances);
+
+      // Connect to all enabled exchanges
+      enabledExchanges.forEach(exchange => {
+        exchangeInstances[exchange].connect();
+        exchangeInstances[exchange].subscribe(symbol);
+        exchangeInstances[exchange].onOrderBookUpdate((data: OrderBookData) => {
+          // Handle order book updates
+        });
+        exchangeInstances[exchange].onError((error: Error) => {
+          setError(error.message);
+        });
+      });
+    };
 
     const handleError = (evt: { exchange: string; error: Error }) =>
       setError(evt.error.message);
@@ -41,8 +81,18 @@ const OrderBook: React.FC<OrderBookProps> = ({
     return () => {
       aggregatorService.off("error", handleError);
       aggregatorService.unsubscribe(symbol);
+      aggregatorService.off('ERROR', handleError);
+      // Cleanup
+      Object.values(exchanges).forEach(exchange => {
+        exchange.unsubscribe(symbol);
+        exchange.disconnect();
+      });
     };
-  }, [symbol, enabledExchanges]);
+  }, [symbol]);
+
+  useEffect(() => {
+    aggregatorService.updateExchanges(enabledExchanges);
+  }, [enabledExchanges]);
 
   const getConnectionStatus = (exchange: Exchange) => {
     return aggregatorService.getStatus(exchange as ExchangeId);
