@@ -104,7 +104,6 @@ const StyledResponsiveGridLayout = styled(WidthProvider(Responsive))`
   }
 `;
 
-const ResponsiveGridLayout = WidthProvider(Responsive) as React.ComponentType<ResponsiveProps>;
 
 interface LayoutItem {
   i: string;
