@@ -6,6 +6,7 @@ import { theme } from '../styles/theme';
 import { ExchangeId, OrderBookData } from '../types/exchange';
 import { aggregatorService } from '../services/aggregatorService';
 import { EXCHANGE_ICONS } from '../utils/exchangeIcons';
+import { EXCHANGES } from '../constants/exchanges';
 
 interface ExchangeData {
   id: string;
@@ -157,32 +158,12 @@ const PriceRange: React.FC<PriceRangeProps> = ({ symbol = 'BTC/USDT', className 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [orderBook, setOrderBook] = useState<OrderBookData | null>(null);
-  const [activeExchanges, setActiveExchanges] = useState<Record<ExchangeId, boolean>>({
-    BINANCE: true,
-    BINANCE_FUTURES: false,
-    BINANCE_US: false,
-    BITFINEX: false,
-    BITGET: false,
-    BITMART: false,
-    BITMEX: false,
-    BITSTAMP: false,
-    BITUNIX: false,
-    BYBIT: true,
-    COINBASE: true,
-    CRYPTOCOM: false,
-    DERIBIT: false,
-    DYDX: false,
-    GATEIO: false,
-    HITBTC: false,
-    HUOBI: false,
-    KRAKEN: true,
-    KUCOIN: false,
-    MEXC: false,
-    OKEX: false,
-    PHEMEX: false,
-    POLONIEX: false,
-    UNISWAP: false
-  });
+  const [activeExchanges, setActiveExchanges] = useState<Record<ExchangeId, boolean>>(
+    EXCHANGES.reduce((acc, exchange) => ({
+      ...acc,
+      [exchange]: false
+    }), {} as Record<ExchangeId, boolean>)
+  );
 
   useEffect(() => {
     const handleInitialized = () => {

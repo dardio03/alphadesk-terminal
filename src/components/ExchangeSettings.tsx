@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ExchangeId } from '../types/exchange';
 import './ExchangeSettings.css';
 import { EXCHANGES } from '../constants/exchanges';
@@ -7,55 +7,151 @@ import { EXCHANGES } from '../constants/exchanges';
 const AVAILABLE_EXCHANGES = EXCHANGES;
 
 export interface ExchangeSettingsProps {
+  open: boolean;
+  anchorEl: HTMLElement | null;
+  onClose: () => void;
   activeExchanges: ExchangeId[];
   onExchangeToggle: (exchangeId: string) => void;
   getExchangeStatus: (exchangeId: string) => string;
 }
 
 const ExchangeSettings: React.FC<ExchangeSettingsProps> = ({
+  open,
+  anchorEl,
+  onClose,
   activeExchanges,
   onExchangeToggle,
   getExchangeStatus
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
 
-  const toggleDropdown = useCallback(() => {
-    setIsOpen(!isOpen);
-  }, [isOpen]);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
 
-  const handleExchangeToggle = useCallback((exchangeId: string) => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+      updatePosition();
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [open, onClose, anchorEl]);
+
+  const updatePosition = () => {
+    if (!anchorEl) return;
+
+    const rect = anchorEl.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const popoverHeight = 400; // max-height of popover
+    const popoverWidth = 280; // min-width of popover
+
+    let top = rect.bottom;
+    let left = rect.left;
+
+    // Check if popover would go below viewport
+    if (top + popoverHeight > viewportHeight) {
+      top = rect.top - popoverHeight;
+    }
+
+    // Check if popover would go beyond right edge
+    if (left + popoverWidth > viewportWidth) {
+      left = viewportWidth - popoverWidth - 10; // 10px padding from edge
+    }
+
+    setPosition({ top, left });
+  };
+
+  if (!open || !anchorEl) return null;
+
+  const handleExchangeToggle = (event: React.MouseEvent, exchangeId: string) => {
+    event.preventDefault();
+    event.stopPropagation();
     onExchangeToggle(exchangeId);
-  }, [onExchangeToggle]);
+  };
 
   return (
-    <div className="exchange-settings">
-      <button
-        className="settings-button"
-        onClick={toggleDropdown}
-        aria-label="Exchange settings"
+    <div 
+      className="exchange-settings-overlay"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1000,
+      }}
+    >
+      <div 
+        ref={popoverRef}
+        className="exchange-settings-popover"
+        style={{
+          position: 'fixed',
+          top: position.top,
+          left: position.left,
+          zIndex: 1001,
+        }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
-          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
-        </svg>
-      </button>
-      
-      {isOpen && (
-        <div className="exchange-dropdown">
-          <div className="exchange-list">
-            {AVAILABLE_EXCHANGES.map((exchangeId) => (
+        <div className="exchange-list">
+          {AVAILABLE_EXCHANGES.map((exchangeId) => {
+            const isActive = activeExchanges.includes(exchangeId as ExchangeId);
+            return (
               <div
                 key={exchangeId}
-                className={`exchange-item ${activeExchanges.includes(exchangeId as ExchangeId) ? 'active' : ''} ${getExchangeStatus(exchangeId)}`}
-                onClick={() => handleExchangeToggle(exchangeId)}
+                className={`exchange-item ${isActive ? 'active' : ''} ${getExchangeStatus(exchangeId)}`}
+                onClick={(e) => handleExchangeToggle(e, exchangeId)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleExchangeToggle(e as unknown as React.MouseEvent, exchangeId);
+                  }
+                }}
               >
-                <span className="exchange-name">{exchangeId}</span>
-                <span className="exchange-status">{getExchangeStatus(exchangeId)}</span>
+                <div className="exchange-item-content">
+                  <span className="exchange-name">{exchangeId}</span>
+                  <span className="exchange-status">{getExchangeStatus(exchangeId)}</span>
+                </div>
+                <div className="exchange-item-right">
+                  <div 
+                    className="toggle-switch"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleExchangeToggle(e, exchangeId);
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isActive}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleExchangeToggle(e as unknown as React.MouseEvent, exchangeId);
+                      }}
+                    />
+                    <span className="toggle-slider"></span>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
   );
 };

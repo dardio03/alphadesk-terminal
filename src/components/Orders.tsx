@@ -1,10 +1,15 @@
 import React from 'react';
 import { Box } from '@mui/material';
 
-const Orders: React.FC = () => {
+interface OrdersProps {
+  symbol: string;
+}
+
+const Orders: React.FC<OrdersProps> = ({ symbol }) => {
   return (
     <Box sx={{ height: '100%', overflow: 'auto' }}>
-      {/* Content will be implemented later */}
+      {/* Orders content will go here */}
+      <p>Orders for {symbol}</p>
     </Box>
   );
 };

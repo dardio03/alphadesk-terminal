@@ -12,7 +12,9 @@ import {
   TextField,
   IconButton,
   styled,
-  Tooltip
+  Tooltip,
+  Box,
+  Typography
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -21,19 +23,16 @@ import {
   Settings as SettingsIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
+import { SavedLayout } from '../types/layout';
 
-interface Layout {
-  name: string;
-  data: any;
-  timestamp: number;
-}
-
-interface TopMenuProps {
-  onSaveLayout: (layout: Layout) => void;
-  onLoadLayout: (layout: Layout) => void;
+export interface TopMenuProps {
+  symbol: string;
+  onSymbolChange: (symbol: string) => void;
+  savedLayouts: SavedLayout[];
+  onSaveLayout: (layout: { name: string; timestamp: number }) => void;
+  onLoadLayout: (layout: SavedLayout) => void;
   onDeleteLayout: (layoutName: string) => void;
   onResetLayout: () => void;
-  savedLayouts: Layout[];
 }
 
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
@@ -86,7 +85,6 @@ export const TopMenu: React.FC<TopMenuProps> = ({
     if (layoutName.trim()) {
       onSaveLayout({
         name: layoutName,
-        data: {}, // This will be filled by the parent component
         timestamp: Date.now()
       });
       setSaveDialogOpen(false);

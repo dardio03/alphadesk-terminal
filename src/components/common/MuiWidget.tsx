@@ -6,9 +6,10 @@ interface WidgetProps {
   title: string;
   children: React.ReactNode;
   onClose?: () => void;
-  onSettings?: () => void;
+  onSettings?: (event: React.MouseEvent<HTMLElement>) => void;
   className?: string;
   noScroll?: boolean;
+  hideHeader?: boolean;
 }
 
 const WidgetContainer = styled(Paper)(({ theme }) => ({
@@ -36,6 +37,9 @@ const WidgetHeader = styled(Box)(({ theme }) => ({
     padding: 2,
     width: 18,
     height: 18,
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
   },
   '& .MuiSvgIcon-root': {
     fontSize: '0.875rem',
@@ -50,6 +54,12 @@ const WidgetTitle = styled(Typography)(({ theme }) => ({
   marginLeft: '4px',
   lineHeight: '21px',
 }));
+
+const WidgetActions = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '4px',
+});
 
 interface WidgetContentProps {
   noScroll?: boolean;
@@ -85,31 +95,63 @@ export const MuiWidget: React.FC<WidgetProps> = ({
   onSettings,
   className,
   noScroll,
+  hideHeader = false,
 }) => {
+  const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (onSettings) {
+      onSettings(event);
+    }
+  };
+
   return (
     <WidgetContainer className={className} elevation={2}>
-      <WidgetHeader className="widget-header">
-        <DragHandle fontSize="small" color="action" />
-        <WidgetTitle variant="subtitle2">{title}</WidgetTitle>
-        {onSettings && (
-          <IconButton
-            size="small"
-            onClick={onSettings}
-            aria-label="Widget settings"
-          >
-            <Settings fontSize="small" />
-          </IconButton>
-        )}
-        {onClose && (
-          <IconButton
-            size="small"
-            onClick={onClose}
-            aria-label="Close widget"
-          >
-            <Close fontSize="small" />
-          </IconButton>
-        )}
-      </WidgetHeader>
+      {!hideHeader && (
+        <WidgetHeader className="widget-header">
+          <DragHandle fontSize="small" color="action" />
+          <WidgetTitle variant="subtitle2">{title}</WidgetTitle>
+          <WidgetActions>
+            {onSettings && (
+              <IconButton
+                size="small"
+                onClick={handleSettingsClick}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                aria-label="Widget settings"
+                sx={{
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  },
+                  '&:active': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  },
+                  '&:focus': {
+                    outline: 'none',
+                  },
+                  '&:focus-visible': {
+                    outline: '2px solid rgba(255, 255, 255, 0.3)',
+                    outlineOffset: '2px',
+                  },
+                }}
+              >
+                <Settings fontSize="small" />
+              </IconButton>
+            )}
+            {onClose && (
+              <IconButton
+                size="small"
+                onClick={onClose}
+                aria-label="Close widget"
+              >
+                <Close fontSize="small" />
+              </IconButton>
+            )}
+          </WidgetActions>
+        </WidgetHeader>
+      )}
       <WidgetContent noScroll={noScroll}>{children}</WidgetContent>
     </WidgetContainer>
   );

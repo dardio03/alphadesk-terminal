@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import { ThemeProvider as StyledThemeProvider } from 'styled-components';
-import { Box, Paper, IconButton } from '@mui/material';
+import { Box, Paper, IconButton, Popover } from '@mui/material';
 import { DragHandle, Close, Settings } from '@mui/icons-material';
 import { Responsive, WidthProvider, ResponsiveProps, Layout } from 'react-grid-layout';
 import styled from 'styled-components';
@@ -18,6 +18,10 @@ import { MuiWidget } from './components/common/MuiWidget';
 import { TopMenu } from './components/TopMenu';
 import { theme } from './styles/theme';
 import { muiTheme } from './styles/muiTheme';
+import ExchangeSettings from './components/ExchangeSettings';
+import { aggregatorService } from './services/aggregatorService';
+import { EXCHANGES } from './constants/exchanges';
+import { ExchangeId } from './types/exchange';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import './App.css';
@@ -135,11 +139,30 @@ type Cols = { [key in Breakpoint]: number };
 const LAYOUTS_STORAGE_KEY = 'alphadesk-layouts';
 
 const App: React.FC = () => {
-  const [symbol] = useState('BTCUSDT');
-  const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>(() => {
-    const saved = localStorage.getItem(LAYOUTS_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [symbol, setSymbol] = useState('BTCUSDT');
+  const [currentBreakpoint, setCurrentBreakpoint] = useState('lg');
+  const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>([]);
+  const [activeExchanges, setActiveExchanges] = useState<ExchangeId[]>(Array.from(EXCHANGES) as ExchangeId[]);
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(null);
+
+  const handleSettingsClick = (event: React.MouseEvent<HTMLElement>) => {
+    setSettingsAnchorEl(event.currentTarget);
+  };
+
+  const handleSettingsClose = () => {
+    setSettingsAnchorEl(null);
+  };
+
+  const handleExchangeToggle = (exchangeId: ExchangeId) => {
+    setActiveExchanges(prev => {
+      if (prev.includes(exchangeId)) {
+        return prev.filter(id => id !== exchangeId);
+      } else {
+        return [...prev, exchangeId];
+      }
+    });
+  };
+
   // Calculate layout based on breakpoint
   const generateLayout = (cols: number, isSmallScreen: boolean = false) => {
     // Base proportions from original design
@@ -203,7 +226,6 @@ const App: React.FC = () => {
   const [layouts, setLayouts] = useState<Layouts>(defaultLayout);
 
   // Keep track of the current layout state
-  const [currentBreakpoint, setCurrentBreakpoint] = useState<string>('lg');
   const [currentLayout, setCurrentLayout] = useState<Layout[]>([]);
 
   const onLayoutChange = (current: Layout[], all: { [key: string]: Layout[] }) => {
@@ -300,95 +322,88 @@ const App: React.FC = () => {
       <StyledThemeProvider theme={theme}>
         <AppContainer>
           <TopMenu
+            symbol={symbol}
+            onSymbolChange={setSymbol}
+            savedLayouts={savedLayouts}
             onSaveLayout={handleSaveLayout}
             onLoadLayout={handleLoadLayout}
             onDeleteLayout={handleDeleteLayout}
             onResetLayout={handleResetLayout}
-            savedLayouts={savedLayouts}
           />
           <StyledResponsiveGridLayout
             className="layout"
             layouts={layouts}
-            breakpoints={{ lg: 1920, md: 1440, sm: 1200, xs: 768, xxs: 480 } as Breakpoints}
-            cols={{ lg: 24, md: 24, sm: 24, xs: 24, xxs: 24 } as Cols}
+            breakpoints={{ lg: 1600, md: 1200, sm: 992, xs: 768, xxs: 0 }}
+            cols={{ lg: 24, md: 24, sm: 24, xs: 24, xxs: 24 }}
             rowHeight={20}
-            margin={[4, 4]}
-            containerPadding={[4, 4]}
             onLayoutChange={onLayoutChange}
-            onBreakpointChange={(newBreakpoint) => {
-              console.log('Breakpoint changed to:', newBreakpoint);
-              setCurrentBreakpoint(newBreakpoint);
-            }}
-            onLayoutsChange={(newLayouts) => {
-              console.log('All layouts changed:', JSON.stringify(newLayouts, null, 2));
-            }}
-            draggableHandle=".widget-header"
-            useCSSTransforms={true}
-            key="grid" // Use static key to prevent remounts
+            onBreakpointChange={setCurrentBreakpoint}
+            isDraggable={true}
+            isResizable={true}
+            margin={[8, 8]}
+            containerPadding={[8, 8]}
           >
             <div key="chart">
-              <MuiWidget title="Chart" noScroll>
-                <TradingViewWidget
-                  symbol={symbol}
-                  theme="dark"
-                  autosize
-                  interval="1"
-                  timezone="Etc/UTC"
-                  style="1"
-                  withdateranges={false}
-                  hide_side_toolbar={true}
+              <MuiWidget title="Chart">
+                <TradingViewWidget symbol={symbol} />
+              </MuiWidget>
+            </div>
+            <div key="orderbook">
+              <MuiWidget 
+                title="Order Book"
+                onSettings={handleSettingsClick}
+              >
+                <OrderBook 
+                  symbol={symbol} 
+                  activeExchanges={activeExchanges}
                 />
               </MuiWidget>
             </div>
-
-            <div key="orderbook">
-              <MuiWidget title="Order Book">
-                <OrderBook symbol={symbol} />
-              </MuiWidget>
-            </div>
-
             <div key="lastTrades">
               <MuiWidget title="Last Trades">
                 <LastTrades symbol={symbol} />
               </MuiWidget>
             </div>
-
+            <div key="pricerange">
+              <MuiWidget title="Price Range">
+                <PriceRange symbol={symbol} />
+              </MuiWidget>
+            </div>
             <div key="watchlist">
               <MuiWidget title="Watchlist">
                 <Watchlist />
               </MuiWidget>
             </div>
-
             <div key="bidAskRange">
               <MuiWidget title="Bid/Ask Range">
                 <BidAskRange symbol={symbol} />
               </MuiWidget>
             </div>
-
             <div key="alerts">
               <MuiWidget title="Alerts">
-                <Alerts />
+                <Alerts symbol={symbol} />
               </MuiWidget>
             </div>
-
             <div key="orderBookDepth">
               <MuiWidget title="Order Book Depth">
                 <OrderBookDepth symbol={symbol} />
               </MuiWidget>
             </div>
-
             <div key="orders">
               <MuiWidget title="Orders">
-                <Orders />
-              </MuiWidget>
-            </div>
-
-            <div key="pricerange">
-              <MuiWidget title="Price Range" noScroll>
-                <PriceRange symbol={symbol} />
+                <Orders symbol={symbol} />
               </MuiWidget>
             </div>
           </StyledResponsiveGridLayout>
+
+          <ExchangeSettings
+            open={Boolean(settingsAnchorEl)}
+            anchorEl={settingsAnchorEl}
+            onClose={handleSettingsClose}
+            activeExchanges={activeExchanges}
+            onExchangeToggle={handleExchangeToggle}
+            getExchangeStatus={(exchangeId) => aggregatorService.getExchangeStatus(exchangeId)}
+          />
         </AppContainer>
       </StyledThemeProvider>
     </MuiThemeProvider>

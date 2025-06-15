@@ -24,11 +24,13 @@ export type ExchangeId =
   | 'OKEX'
   | 'PHEMEX'
   | 'POLONIEX'
-  | 'UNISWAP';
+  | 'UNISWAP'
+  | 'GEMINI';
 
 export interface OrderBookEntry {
   price: number;
   quantity: number;
+  exchangeId: string;
   exchanges?: string[];  // List of exchanges contributing to this level
   exchangeQuantities?: Record<string, number>;
   totalQuantity?: number; // Total quantity across all exchanges
@@ -97,6 +99,7 @@ export interface WebSocketHookProps {
 export interface OrderBookProps {
   symbol?: string;
   className?: string;
+  activeExchanges?: ExchangeId[];
 }
 
 export interface OrderBookSettingsProps {
