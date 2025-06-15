@@ -1,34 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { ExchangeId } from '../types/exchange';
 import './ExchangeSettings.css';
+import { EXCHANGES } from '../constants/exchanges';
 
 // Define available exchanges
-const AVAILABLE_EXCHANGES = [
-  'binance',
-  'binance_futures',
-  'binance_us',
-  'bitfinex',
-  'bitget',
-  'bitmart',
-  'bitmex',
-  'bitstamp',
-  'bitunix',
-  'bybit',
-  'coinbase',
-  'cryptocom',
-  'deribit',
-  'dydx',
-  'gateio',
-  'hitbtc',
-  'huobi',
-  'kraken',
-  'kucoin',
-  'mexc',
-  'okex',
-  'phemex',
-  'poloniex',
-  'uniswap'
-] as const;
+const AVAILABLE_EXCHANGES = EXCHANGES;
 
 export interface ExchangeSettingsProps {
   activeExchanges: ExchangeId[];
