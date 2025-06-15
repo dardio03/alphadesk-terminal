@@ -1,5 +1,4 @@
 import Exchange from '../exchange'
-const INTX_PAIR_REGEX = /-INTX$/
 
 export default class COINBASE extends Exchange {
   id = 'COINBASE'
