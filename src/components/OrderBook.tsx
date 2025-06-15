@@ -270,7 +270,13 @@ const OrderBook: React.FC<OrderBookProps> = ({
     return (
       <div className={`order-book ${className}`}>
         <div className="order-book-header">
-          <h2>Order Book - {symbol}</h2>
+          <ExchangeSettings
+            activeExchanges={activeExchanges}
+            onExchangeToggle={handleExchangeToggle}
+            getExchangeStatus={(exchangeId) =>
+              aggregatorService.getExchangeStatus(exchangeId)
+            }
+          />
         </div>
         <div className="orderbook-content">
           <div className="loading">Initializing...</div>
@@ -282,11 +288,12 @@ const OrderBook: React.FC<OrderBookProps> = ({
   return (
     <div className={`order-book ${className}`}>
       <div className="order-book-header">
-        <h2>Order Book - {symbol}</h2>
         <ExchangeSettings
           activeExchanges={activeExchanges}
           onExchangeToggle={handleExchangeToggle}
-          getExchangeStatus={(exchangeId) => aggregatorService.getExchangeStatus(exchangeId)}
+          getExchangeStatus={(exchangeId) =>
+            aggregatorService.getExchangeStatus(exchangeId)
+          }
         />
       </div>
       <div className="orderbook-content">

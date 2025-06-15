@@ -511,18 +511,19 @@
   height: 100%;
   background-color: var(--background-color);
   color: var(--text-color);
+  position: relative;
 }
 
 .order-book-header {
+  position: absolute;
+  top: -22px;
+  right: 28px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 0;
+  border: none;
 }
 
 .order-book-header h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  display: none;
 }
