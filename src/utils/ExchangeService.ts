@@ -65,17 +65,71 @@ export class ExchangeFactory {
       case 'BYBIT':
         exchange = new BybitExchange(config);
         break;
+      case 'AGGR':
+        exchange = new AggrExchange();
+        break;
+      case 'BINANCE_FUTURES':
+        exchange = new BinanceFuturesExchange();
+        break;
+      case 'BINANCE_US':
+        exchange = new BinanceUsExchange();
+        break;
       case 'COINBASE':
         exchange = new CoinbaseExchange(config);
+        break;
+      case 'BITFINEX':
+        exchange = new BitfinexExchangeStub();
+        break;
+      case 'BITGET':
+        exchange = new BitgetExchangeStub();
+        break;
+      case 'BITMART':
+        exchange = new BitmartExchangeStub();
+        break;
+      case 'BITMEX':
+        exchange = new BitmexExchangeStub();
+        break;
+      case 'BITSTAMP':
+        exchange = new BitstampExchangeStub();
+        break;
+      case 'BITUNIX':
+        exchange = new BitunixExchangeStub();
         break;
       case 'KRAKEN':
         exchange = new KrakenExchange(config);
         break;
+      case 'CRYPTOCOM':
+        exchange = new CryptocomExchangeStub();
+        break;
+      case 'DERIBIT':
+        exchange = new DeribitExchangeStub();
+        break;
+      case 'DYDX':
+        exchange = new DydxExchangeStub();
+        break;
+      case 'GATEIO':
+        exchange = new GateioExchangeStub();
+        break;
+      case 'HUOBI':
+        exchange = new HuobiExchangeStub();
+        break;
       case 'PHEMEX':
         exchange = new PhemexExchange(config);
         break;
+      case 'KUCOIN':
+        exchange = new KucoinExchangeStub();
+        break;
+      case 'MEXC':
+        exchange = new MexcExchangeStub();
+        break;
+      case 'OKEX':
+        exchange = new OkexExchangeStub();
+        break;
       case 'POLONIEX':
         exchange = new PoloniexExchange(config);
+        break;
+      case 'UNISWAP':
+        exchange = new UniswapExchangeStub();
         break;
       case 'HITBTC':
         exchange = new HitbtcExchange(config);
@@ -226,6 +280,94 @@ abstract class BaseExchange extends EventEmitter implements ExchangeConnection {
 
   getStatus() {
     return this.status;
+  }
+}
+
+class BasicWsExchange extends BaseExchange {
+  private ws: WebSocket | null = null;
+  private readonly baseUrl: string;
+  private pingInterval: NodeJS.Timeout | null = null;
+  constructor(baseUrl: string) {
+    super();
+    this.baseUrl = baseUrl;
+  }
+
+  async connect(): Promise<void> {
+    if (this.ws) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - this.lastConnectionAttempt < this.minConnectionInterval) {
+      return;
+    }
+    this.lastConnectionAttempt = now;
+
+    this.status = 'connecting';
+    try {
+      this.ws = new WebSocket(this.baseUrl);
+      this.ws.onopen = () => {
+        this.notifyConnect();
+        if (this.symbol) {
+          this.subscribe(this.symbol);
+        }
+        this.pingInterval = setInterval(() => {
+          if (this.ws?.readyState === WebSocket.OPEN) {
+            this.ws.send('ping');
+          }
+        }, 30000);
+      };
+
+      this.ws.onclose = () => {
+        this.notifyDisconnect();
+        if (this.pingInterval) {
+          clearInterval(this.pingInterval);
+          this.pingInterval = null;
+        }
+        this.ws = null;
+        this.reconnect();
+      };
+
+      this.ws.onerror = (event) => {
+        this.notifyError(new Error('WebSocket error'));
+      };
+
+      this.ws.onmessage = (event) => {
+        this.processMessage(event.data);
+      };
+    } catch (error) {
+      this.notifyError(error as Error);
+      this.reconnect();
+    }
+  }
+
+  disconnect(): void {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.status = 'disconnected';
+  }
+
+  subscribe(symbol: string): void {
+    this.symbol = symbol;
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Exchange specific subscription should be implemented here
+    }
+  }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Exchange specific unsubscription should be implemented here
+    }
+  }
+
+  protected processMessage(_data: any) {
+    // Parsing for order book updates should be implemented per exchange
   }
 }
 
@@ -1457,13 +1599,139 @@ class HitbtcExchange extends BaseExchange {
   }
 }
 
+class AggrExchange extends BasicWsExchange {
+  constructor() {
+    super('wss://sentiment.aggr.trade');
+  }
+}
+
+class BinanceFuturesExchange extends BasicWsExchange {
+  constructor() {
+    super('wss://fstream.binance.com/ws');
+  }
+}
+
+class BinanceUsExchange extends BasicWsExchange {
+  constructor() {
+    super('wss://stream.binance.us:9443/ws');
+  }
+}
+
+class BitfinexExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://api-pub.bitfinex.com/ws/2');
+  }
+}
+
+class BitgetExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://ws.bitget.com/spot/v1/stream');
+  }
+}
+
+class BitmartExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://openapi-ws-v2.bitmart.com/api?protocol=1.1');
+  }
+}
+
+class BitmexExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://www.bitmex.com/realtime');
+  }
+}
+
+class BitstampExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://ws.bitstamp.net/');
+  }
+}
+
+class BitunixExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://fapi.bitunix.com/public/');
+  }
+}
+
+class CryptocomExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://stream.crypto.com/v2/market');
+  }
+}
+
+class DeribitExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://www.deribit.com/ws/api/v2');
+  }
+}
+
+class DydxExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://api.dydx.exchange/v3/ws');
+  }
+}
+
+class GateioExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://ws.gate.io/v3/');
+  }
+}
+
+class HuobiExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://api.hbdm.com/swap-ws');
+  }
+}
+
+class KucoinExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://ws-api.kucoin.com/endpoint');
+  }
+}
+
+class MexcExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://wbs.mexc.com/ws');
+  }
+}
+
+class OkexExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('wss://ws.okx.com:8443/ws/v5/public');
+  }
+}
+
+class UniswapExchangeStub extends BasicWsExchange {
+  constructor() {
+    super('');
+  }
+}
+
 // Register all exchanges
 ExchangeFactory.registerExchange('BINANCE', new BinanceExchange());
 ExchangeFactory.registerExchange('BYBIT', new BybitExchange());
+ExchangeFactory.registerExchange('AGGR', new AggrExchange());
+ExchangeFactory.registerExchange('BINANCE_FUTURES', new BinanceFuturesExchange());
+ExchangeFactory.registerExchange('BINANCE_US', new BinanceUsExchange());
+ExchangeFactory.registerExchange('BITFINEX', new BitfinexExchangeStub());
+ExchangeFactory.registerExchange('BITGET', new BitgetExchangeStub());
+ExchangeFactory.registerExchange('BITMART', new BitmartExchangeStub());
+ExchangeFactory.registerExchange('BITMEX', new BitmexExchangeStub());
+ExchangeFactory.registerExchange('BITSTAMP', new BitstampExchangeStub());
+ExchangeFactory.registerExchange('BITUNIX', new BitunixExchangeStub());
 ExchangeFactory.registerExchange('COINBASE', new CoinbaseExchange());
+ExchangeFactory.registerExchange('CRYPTOCOM', new CryptocomExchangeStub());
+ExchangeFactory.registerExchange('DERIBIT', new DeribitExchangeStub());
+ExchangeFactory.registerExchange('DYDX', new DydxExchangeStub());
+ExchangeFactory.registerExchange('GATEIO', new GateioExchangeStub());
+ExchangeFactory.registerExchange('HUOBI', new HuobiExchangeStub());
 ExchangeFactory.registerExchange('KRAKEN', new KrakenExchange());
+ExchangeFactory.registerExchange('KUCOIN', new KucoinExchangeStub());
+ExchangeFactory.registerExchange('MEXC', new MexcExchangeStub());
+ExchangeFactory.registerExchange('OKEX', new OkexExchangeStub());
 ExchangeFactory.registerExchange('PHEMEX', new PhemexExchange());
 ExchangeFactory.registerExchange('POLONIEX', new PoloniexExchange());
+ExchangeFactory.registerExchange('UNISWAP', new UniswapExchangeStub());
 ExchangeFactory.registerExchange('HITBTC', new HitbtcExchange());
 
 export default ExchangeFactory;
