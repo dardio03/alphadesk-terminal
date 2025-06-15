@@ -1,185 +1,155 @@
-import React, { useState, useEffect, useRef } from "react";
-import aggregatorService, { ExchangeId } from "../services/aggregatorService";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { aggregatorService } from "../services/aggregatorService";
+import { ExchangeId } from "../types/exchange";
 import ExchangeFactory, { ExchangeConnection, OrderBookData, OrderBookEntry } from "../utils/ExchangeService";
 import { OrderBookProps } from "../types/exchange";
 import { formatPrice, formatQuantity } from "../utils/formatPrice";
+import { ErrorContext } from '../utils/ErrorHandler';
+import ExchangeSettings from './ExchangeSettings';
 
 import "./OrderBook.css";
 
-export const EXCHANGES = {
-  BINANCE: "BINANCE",
-  BYBIT: "BYBIT",
-  COINBASE: "COINBASE",
-  KRAKEN: "KRAKEN",
-} as const;
-
-type Exchange = ExchangeId;
+// Define available exchanges
+const AVAILABLE_EXCHANGES = [
+  'binance',
+  'binance_futures',
+  'binance_us',
+  'bitfinex',
+  'bitget',
+  'bitmart',
+  'bitmex',
+  'bitstamp',
+  'bitunix',
+  'bybit',
+  'coinbase',
+  'cryptocom',
+  'deribit',
+  'dydx',
+  'gateio',
+  'hitbtc',
+  'huobi',
+  'kraken',
+  'kucoin',
+  'mexc',
+  'okex',
+  'phemex',
+  'poloniex',
+  'uniswap'
+] as const;
 
 interface AggregatedOrderBookEntry extends OrderBookEntry {
   exchanges: string[];
+  exchangeQuantities: Record<string, number>;
+  totalQuantity: number;
 }
 
 const OrderBook: React.FC<OrderBookProps> = ({
   symbol = "BTCUSDT",
   className = "",
 }) => {
-  const [enabledExchanges, setEnabledExchanges] = useState<Exchange[]>([
-    EXCHANGES.BINANCE,
-    EXCHANGES.BYBIT,
-    EXCHANGES.COINBASE,
-    EXCHANGES.KRAKEN,
-  ]);
-  const [exchanges, setExchanges] = useState<{ [key: string]: ExchangeConnection }>({});
+  const [activeExchanges, setActiveExchanges] = useState<ExchangeId[]>(
+    AVAILABLE_EXCHANGES.map(exchange => exchange as ExchangeId)
+  );
+  const [exchangeConnections, setExchangeConnections] = useState<{ [key: string]: ExchangeConnection }>({});
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    aggregatorService.subscribe(symbol, enabledExchanges);
-
-    return () => {
-      aggregatorService.unsubscribe(symbol);
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleServiceError = (payload: { message: string }) => {
-      setError(payload.message);
-    };
-
-    aggregatorService.on('ERROR', handleServiceError);
-
-    const initializeExchanges = async () => {
-      const exchangeInstances = Object.values(EXCHANGES).reduce((acc, exchange) => {
-        acc[exchange] = ExchangeFactory.getExchange(exchange);
-        return acc;
-      }, {} as { [key: string]: ExchangeConnection });
-
-      setExchanges(exchangeInstances);
-
-      // Connect to all enabled exchanges
-      enabledExchanges.forEach(exchange => {
-        exchangeInstances[exchange].connect();
-        exchangeInstances[exchange].subscribe(symbol);
-        exchangeInstances[exchange].onOrderBookUpdate((data: OrderBookData) => {
-          // Handle order book updates
-        });
-        exchangeInstances[exchange].onError((error: Error) => {
-          setError(error.message);
-        });
-      });
-    };
-
-    initializeExchanges();
-
-    const handleError = (evt: { exchange: string; error: Error }) =>
-      setError(evt.error.message);
-    aggregatorService.on("error", handleError);
-
-    return () => {
-      aggregatorService.off("error", handleError);
-      aggregatorService.unsubscribe(symbol);
-      aggregatorService.off('ERROR', handleServiceError);
-      // Cleanup
-      Object.values(exchanges).forEach(exchange => {
-        exchange.unsubscribe(symbol);
-        exchange.disconnect();
-      });
-    };
-  }, [symbol]);
-
-  useEffect(() => {
-    aggregatorService.updateExchanges(enabledExchanges);
-  }, [enabledExchanges]);
-
-  const getConnectionStatus = (exchange: Exchange) => {
-    return aggregatorService.getStatus(exchange as ExchangeId);
-  };
-
+  const [errors, setErrors] = useState<{ [key: string]: ErrorContext }>({});
+  const [maxDepth, setMaxDepth] = useState<number>(100);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [bids, setBids] = useState<AggregatedOrderBookEntry[]>([]);
   const [asks, setAsks] = useState<AggregatedOrderBookEntry[]>([]);
 
   useEffect(() => {
-    const handleUpdate = (data: OrderBookData) => {
-      setBids(data.bids.map((b) => ({ ...b, exchanges: ["aggregated"] })));
-      setAsks(data.asks.map((a) => ({ ...a, exchanges: ["aggregated"] })));
+    const handleInitialized = () => {
+      setIsInitialized(true);
+      setError(null); // Clear any previous errors
     };
-    aggregatorService.on("orderBook", handleUpdate);
+
+    const handleError = (context: ErrorContext) => {
+      console.error(`Exchange error:`, context);
+      setErrors(prev => ({
+        ...prev,
+        [context.exchangeId]: context
+      }));
+      const errorMessage = context.originalError instanceof Error 
+        ? context.originalError.message 
+        : typeof context.originalError === 'string' 
+          ? context.originalError 
+          : 'Unknown error';
+      setError(`Error with ${context.exchangeId}: ${errorMessage}`);
+    };
+
+    const handleOrderBookUpdate = (data: OrderBookData) => {
+      if (!data || (!data.bids && !data.asks)) {
+        setError('Received invalid order book data');
+        return;
+      }
+
+      try {
+        setBids(data.bids.map((b) => ({ 
+          ...b, 
+          exchanges: b.exchanges || ["aggregated"],
+          exchangeQuantities: b.exchangeQuantities || { "aggregated": b.quantity },
+          totalQuantity: b.totalQuantity || b.quantity
+        })));
+        setAsks(data.asks.map((a) => ({ 
+          ...a, 
+          exchanges: a.exchanges || ["aggregated"],
+          exchangeQuantities: a.exchangeQuantities || { "aggregated": a.quantity },
+          totalQuantity: a.totalQuantity || a.quantity
+        })));
+        setError(null); // Clear any previous errors
+      } catch (error) {
+        console.error('Error processing order book update:', error);
+        setError(`Error processing order book data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    };
+
+    aggregatorService.on('initialized', handleInitialized);
+    aggregatorService.on('error', handleError);
+    aggregatorService.on('orderBook', handleOrderBookUpdate);
+
     return () => {
-      aggregatorService.off("orderBook", handleUpdate);
+      aggregatorService.off('initialized', handleInitialized);
+      aggregatorService.off('error', handleError);
+      aggregatorService.off('orderBook', handleOrderBookUpdate);
     };
   }, []);
 
-  const handleToggleExchange = (exchange: Exchange) => {
-    setEnabledExchanges((prev) => {
-      if (prev.includes(exchange)) {
-        return prev.filter((e) => e !== exchange);
+  useEffect(() => {
+    if (!isInitialized) {
+      return;
+    }
+
+    const subscribe = async () => {
+      try {
+        setError(null); // Clear any previous errors
+        await aggregatorService.subscribe(symbol, activeExchanges);
+      } catch (error) {
+        console.error('Failed to subscribe:', error);
+        setError(error instanceof Error ? error.message : 'Failed to subscribe');
+      }
+    };
+
+    subscribe();
+
+    return () => {
+      try {
+        aggregatorService.unsubscribe(activeExchanges);
+      } catch (error) {
+        console.error('Error unsubscribing:', error);
+      }
+    };
+  }, [symbol, activeExchanges, isInitialized]);
+
+  const handleExchangeToggle = (exchangeId: string) => {
+    setActiveExchanges(prev => {
+      if (prev.includes(exchangeId as ExchangeId)) {
+        return prev.filter(id => id !== exchangeId);
       } else {
-        return [...prev, exchange];
+        return [...prev, exchangeId as ExchangeId];
       }
     });
   };
-
-  const renderExchangeSettings = () => (
-    <div className="exchange-toggles">
-      {Object.values(EXCHANGES).map((exchange) => (
-        <label key={exchange} className="exchange-toggle">
-          <input
-            type="checkbox"
-            checked={enabledExchanges.includes(exchange)}
-            onChange={() => handleToggleExchange(exchange)}
-          />
-          <span>{exchange}</span>
-          <span
-            className={`connection-status ${getConnectionStatus(exchange)}`}
-            onClick={() => {
-              const status = getConnectionStatus(exchange);
-              if (status === "disconnected" || status === "error") {
-                aggregatorService.reconnect(exchange as ExchangeId);
-              }
-            }}
-            title={
-              getConnectionStatus(exchange) === "disconnected" ||
-              getConnectionStatus(exchange) === "error"
-                ? "Click to reconnect"
-                : undefined
-            }
-          >
-            {getConnectionStatus(exchange) === "connected" && (
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-            {getConnectionStatus(exchange) === "connecting" && (
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M12 3v3m0 12v3M5.636 5.636l2.122 2.122m8.484 8.484l2.122 2.122M3 12h3m12 0h3M5.636 18.364l2.122-2.122m8.484-8.484l2.122-2.122" />
-              </svg>
-            )}
-            {(getConnectionStatus(exchange) === "disconnected" ||
-              getConnectionStatus(exchange) === "error") && (
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
-            {getConnectionStatus(exchange)}
-          </span>
-        </label>
-      ))}
-    </div>
-  );
 
   const asksRef = useRef<HTMLDivElement>(null);
   const bidsRef = useRef<HTMLDivElement>(null);
@@ -243,99 +213,120 @@ const OrderBook: React.FC<OrderBookProps> = ({
     return `${entry.exchanges.length} exchange${entry.exchanges.length > 1 ? "s" : ""} | Total value: $${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  return (
-    <div className={`orderbook ${className}`}>
-      {error && <div className="orderbook-error">{error}</div>}
-      <div className="orderbook-content">
-        <div className="orderbook-header">
-          <div className="column-headers">
-            <div className="amount">Amount</div>
-            <div className="total">Total</div>
-            <div className="price">Price</div>
-          </div>
-        </div>
-        <div className="orderbook-sections">
-          <div
-            className={`orderbook-section asks-section ${scrollStates.asks.isTop ? "scrolled-top" : ""} ${scrollStates.asks.isBottom ? "scrolled-bottom" : ""}`}
-          >
-            <div
-              ref={asksRef}
-              className="orderbook-section-content"
-              onScroll={handleScroll("asks")}
-            >
-              {asks.map((ask, index) => {
-                const totalUpToHere = asks
-                  .slice(0, index + 1)
-                  .reduce((sum, a) => sum + a.quantity, 0);
-                return (
-                  <div
-                    key={`ask-${index}`}
-                    className="order-row ask"
-                    data-tooltip={formatTooltip(ask)}
-                  >
-                    <div className="amount">{formatQuantity(ask.quantity)}</div>
-                    <div className="total">{formatQuantity(totalUpToHere)}</div>
-                    <div className="price sell">{formatPrice(ask.price)}</div>
-                    <div
-                      className="depth-visualization"
-                      style={{
-                        width: `${(ask.quantity / Math.max(...asks.slice(0, 16).map((a) => a.quantity))) * 100}%`,
-                      }}
-                    />
-                    <div className="exchanges">{ask.exchanges.join(", ")}</div>
-                  </div>
-                );
-              })}
-            </div>
-            <div
-              className="scroll-indicator"
-              style={{
-                opacity: scrollStates.asks.isTop ? 0 : 0.3,
-                transform: `translateY(${scrollStates.asks.isTop ? "0" : "100%"})`,
-              }}
-            />
-          </div>
+  // Performance optimization: Memoize filtered and sorted orderbook entries
+  const filteredBids = useMemo(() => {
+    return bids
+      .filter(entry => activeExchanges.length === 0 || entry.exchanges.some(ex => activeExchanges.includes(ex as ExchangeId)))
+      .sort((a, b) => b.price - a.price)
+      .slice(0, maxDepth);
+  }, [bids, activeExchanges, maxDepth]);
 
-          <div
-            className={`orderbook-section bids-section ${scrollStates.bids.isTop ? "scrolled-top" : ""} ${scrollStates.bids.isBottom ? "scrolled-bottom" : ""}`}
-          >
-            <div
-              ref={bidsRef}
-              className="orderbook-section-content"
-              onScroll={handleScroll("bids")}
-            >
-              {bids.map((bid, index) => {
-                const totalUpToHere = bids
-                  .slice(0, index + 1)
-                  .reduce((sum, b) => sum + b.quantity, 0);
-                return (
-                  <div
-                    key={`bid-${index}`}
-                    className="order-row bid"
-                    data-tooltip={formatTooltip(bid)}
-                  >
-                    <div className="amount">{formatQuantity(bid.quantity)}</div>
-                    <div className="total">{formatQuantity(totalUpToHere)}</div>
-                    <div className="price buy">{formatPrice(bid.price)}</div>
-                    <div
-                      className="depth-visualization"
-                      style={{
-                        width: `${(bid.quantity / Math.max(...bids.slice(0, 16).map((b) => b.quantity))) * 100}%`,
-                      }}
-                    />
-                    <div className="exchanges">{bid.exchanges.join(", ")}</div>
-                  </div>
-                );
-              })}
+  const filteredAsks = useMemo(() => {
+    return asks
+      .filter(entry => activeExchanges.length === 0 || entry.exchanges.some(ex => activeExchanges.includes(ex as ExchangeId)))
+      .sort((a, b) => a.price - b.price)
+      .slice(0, maxDepth);
+  }, [asks, activeExchanges, maxDepth]);
+
+  // Performance optimization: Memoize exchange statistics
+  const exchangeStats = useMemo(() => {
+    const stats = new Map<string, { bidCount: number; askCount: number; totalBidQty: number; totalAskQty: number }>();
+    
+    [...bids, ...asks].forEach(entry => {
+      entry.exchanges.forEach(exchange => {
+        if (!stats.has(exchange)) {
+          stats.set(exchange, { bidCount: 0, askCount: 0, totalBidQty: 0, totalAskQty: 0 });
+        }
+        const stat = stats.get(exchange)!;
+        if (entry.price > 0) {
+          stat.bidCount++;
+          stat.totalBidQty += entry.quantity;
+        } else {
+          stat.askCount++;
+          stat.totalAskQty += entry.quantity;
+        }
+      });
+    });
+    
+    return stats;
+  }, [bids, asks]);
+
+  // Performance optimization: Memoize depth calculation
+  const calculateDepth = useCallback((entries: AggregatedOrderBookEntry[]) => {
+    let total = 0;
+    return entries.map(entry => {
+      total += entry.totalQuantity;
+      return total;
+    });
+  }, []);
+
+  const bidDepths = useMemo(() => calculateDepth(filteredBids), [filteredBids, calculateDepth]);
+  const askDepths = useMemo(() => calculateDepth(filteredAsks), [filteredAsks, calculateDepth]);
+
+  const renderOrderBookEntry = (entry: AggregatedOrderBookEntry, type: 'bid' | 'ask', index: number) => {
+    const depth = type === 'bid' ? bidDepths[index] : askDepths[index];
+    const maxDepth = type === 'bid' ? bidDepths[bidDepths.length - 1] : askDepths[askDepths.length - 1];
+    const depthPercentage = (depth / maxDepth) * 100;
+
+    return (
+      <div className={`orderbook-entry ${type}`} key={entry.price}>
+        <div 
+          className="depth-bar" 
+          style={{ width: `${depthPercentage}%` }}
+        />
+        <div className="price">{formatPrice(entry.price)}</div>
+        <div className="quantity">{formatQuantity(entry.totalQuantity)}</div>
+        <div className="exchange-breakdown">
+          {entry.exchanges.map(exchange => (
+            <div key={exchange} className="exchange-quantity">
+              <span className="exchange-name">{exchange}</span>
+              <span className="quantity">
+                {formatQuantity(entry.exchangeQuantities[exchange])}
+              </span>
             </div>
-            <div
-              className="scroll-indicator"
-              style={{
-                opacity: scrollStates.bids.isTop ? 0 : 0.3,
-                transform: `translateY(${scrollStates.bids.isTop ? "0" : "100%"})`,
-              }}
-            />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  if (!isInitialized) {
+    return (
+      <div className={`order-book ${className}`}>
+        <div className="order-book-header">
+          <h2>Order Book - {symbol}</h2>
+        </div>
+        <div className="orderbook-content">
+          <div className="loading">Initializing...</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`order-book ${className}`}>
+      <div className="order-book-header">
+        <h2>Order Book - {symbol}</h2>
+        <ExchangeSettings
+          activeExchanges={activeExchanges}
+          onExchangeToggle={handleExchangeToggle}
+          getExchangeStatus={(exchangeId) => aggregatorService.getExchangeStatus(exchangeId)}
+        />
+      </div>
+      <div className="orderbook-content">
+        <div className="asks" ref={asksRef} onScroll={handleScroll("asks")}>
+          <div className="header">
+            <div className="price">Price</div>
+            <div className="quantity">Quantity</div>
           </div>
+          {filteredAsks.map((entry, index) => renderOrderBookEntry(entry, 'ask', index))}
+        </div>
+        <div className="bids" ref={bidsRef} onScroll={handleScroll("bids")}>
+          <div className="header">
+            <div className="price">Price</div>
+            <div className="quantity">Quantity</div>
+          </div>
+          {filteredBids.map((entry, index) => renderOrderBookEntry(entry, 'bid', index))}
         </div>
       </div>
     </div>

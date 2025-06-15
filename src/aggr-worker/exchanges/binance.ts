@@ -35,19 +35,24 @@ export default class BINANCE extends Exchange {
       return
     }
 
-    this.subscriptions[pair] = ++this.lastSubscriptionId
-    const channel = settings.aggregationLength === -1 ? 'trade' : 'aggTrade'
-    const params = [pair + '@' + channel]
+    try {
+      this.subscriptions[pair] = ++this.lastSubscriptionId
+      const channel = settings.aggregationLength === -1 ? 'trade' : 'aggTrade'
+      const params = [pair + '@' + channel]
 
-    api.send(
-      JSON.stringify({
-        method: 'SUBSCRIBE',
-        params,
-        id: this.subscriptions[pair]
-      })
-    )
+      api.send(
+        JSON.stringify({
+          method: 'SUBSCRIBE',
+          params,
+          id: this.subscriptions[pair]
+        })
+      )
 
-    return true
+      return true
+    } catch (error) {
+      this.emit('error', { exchange: this.id, error })
+      return false
+    }
   }
 
   /**
@@ -60,37 +65,45 @@ export default class BINANCE extends Exchange {
       return
     }
 
-    const channel = settings.aggregationLength === -1 ? 'trade' : 'aggTrade'
-    const params = [pair + '@' + channel]
+    try {
+      const channel = settings.aggregationLength === -1 ? 'trade' : 'aggTrade'
+      const params = [pair + '@' + channel]
 
-    api.send(
-      JSON.stringify({
-        method: 'UNSUBSCRIBE',
-        params,
-        id: this.subscriptions[pair]
-      })
-    )
+      api.send(
+        JSON.stringify({
+          method: 'UNSUBSCRIBE',
+          params,
+          id: this.subscriptions[pair]
+        })
+      )
 
-    delete this.subscriptions[pair]
-
-    return true
+      delete this.subscriptions[pair]
+      return true
+    } catch (error) {
+      this.emit('error', { exchange: this.id, error })
+      return false
+    }
   }
 
   onMessage(event, api) {
-    const json = JSON.parse(event.data)
+    try {
+      const json = JSON.parse(event.data)
 
-    if (json.E) {
-      return this.emitTrades(api.id, [
-        {
-          exchange: this.id,
-          pair: json.s.toLowerCase(),
-          timestamp: json.T,
-          price: +json.p,
-          size: +json.q,
-          count: json.l - json.f + 1,
-          side: json.m ? 'sell' : 'buy'
-        }
-      ])
+      if (json.E) {
+        return this.emitTrades(api.id, [
+          {
+            exchange: this.id,
+            pair: json.s.toLowerCase(),
+            timestamp: json.T,
+            price: +json.p,
+            size: +json.q,
+            count: json.l - json.f + 1,
+            side: json.m ? 'sell' : 'buy'
+          }
+        ])
+      }
+    } catch (error) {
+      this.emit('error', { exchange: this.id, error })
     }
   }
 }

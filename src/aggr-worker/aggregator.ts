@@ -29,6 +29,15 @@ class Aggregator {
 
   private _connectionChangeNoticeTimeout: number
 
+  private retryCounts: { [exchangeId: string]: number } = {}
+  private readonly MAX_RETRIES = 5
+  private readonly RETRY_DELAYS = {
+    DEFAULT: 1000,
+    RATE_LIMIT: 5000,
+    NETWORK: 2000,
+    AUTH: 10000
+  }
+
   constructor(worker: Worker) {
     this.bindExchanges()
     this.startTickersInterval()
@@ -577,14 +586,43 @@ class Aggregator {
         0
   }
 
+  private getRetryDelay(error: any): number {
+    if (error.message?.includes('rate limit')) {
+      return this.RETRY_DELAYS.RATE_LIMIT
+    }
+    if (error.message?.includes('network') || error.message?.includes('timeout')) {
+      return this.RETRY_DELAYS.NETWORK
+    }
+    if (error.message?.includes('auth') || error.message?.includes('unauthorized')) {
+      return this.RETRY_DELAYS.AUTH
+    }
+    return this.RETRY_DELAYS.DEFAULT
+  }
+
   onError(exchangeId, event) {
     let message: string
+    let error: any = event
 
     if (typeof event === 'string') {
       message = event
+      error = new Error(event)
     } else if (event.message) {
       message = event.message
+      error = event
     }
+
+    // Initialize retry count if not exists
+    if (!this.retryCounts[exchangeId]) {
+      this.retryCounts[exchangeId] = 0
+    }
+
+    // Log detailed error information
+    console.error(`[aggregator] Error for ${exchangeId}:`, {
+      message,
+      error,
+      retryCount: this.retryCounts[exchangeId],
+      timestamp: new Date().toISOString()
+    })
 
     if (message) {
       this.ctx.postMessage({
@@ -599,6 +637,54 @@ class Aggregator {
 
     const api = event && event.target
 
+    // Attempt to reconnect the exchange
+    const exchange = getExchangeById(exchangeId)
+    if (exchange) {
+      const pairs = Object.keys(this.connections).filter(key => key.startsWith(exchangeId + ':'))
+      
+      if (pairs.length > 0) {
+        // Check if we've exceeded max retries
+        if (this.retryCounts[exchangeId] >= this.MAX_RETRIES) {
+          console.error(`[aggregator] Max retries (${this.MAX_RETRIES}) exceeded for ${exchangeId}`)
+          this.ctx.postMessage({
+            op: 'notice',
+            data: {
+              id: exchangeId + '-max-retries',
+              type: 'error',
+              title: `${exchangeId} failed to reconnect after ${this.MAX_RETRIES} attempts`
+            }
+          })
+          return
+        }
+
+        console.log(`[aggregator] Attempting to reconnect ${exchangeId} for pairs:`, pairs)
+        
+        // Disconnect existing connections
+        pairs.forEach(market => {
+          const connection = this.connections[market]
+          if (connection) {
+            exchange.unlink(market)
+          }
+        })
+
+        // Increment retry count
+        this.retryCounts[exchangeId]++
+
+        // Calculate retry delay based on error type
+        const retryDelay = this.getRetryDelay(error)
+
+        // Reconnect after calculated delay
+        setTimeout(() => {
+          this.connect(pairs).then(() => {
+            // Reset retry count on successful connection
+            this.retryCounts[exchangeId] = 0
+          }).catch(err => {
+            console.error(`[aggregator] Failed to reconnect ${exchangeId}:`, err)
+          })
+        }, retryDelay)
+      }
+    }
+
     this.ctx.postMessage({
       op: 'error',
       data: {
@@ -606,7 +692,8 @@ class Aggregator {
         wasOpened: api ? api._wasOpened : null,
         originalUrl: api ? api._originalUrl : null,
         wasErrored: api ? api._wasErrored : null,
-        url: api ? api.url : null
+        url: api ? api.url : null,
+        retryCount: this.retryCounts[exchangeId]
       }
     })
   }

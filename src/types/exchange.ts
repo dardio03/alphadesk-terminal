@@ -1,13 +1,43 @@
 export type ConnectionState = 'connected' | 'connecting' | 'disconnected' | 'error' | 'unknown';
 
+export type ExchangeId = 
+  | 'BINANCE'
+  | 'BINANCE_FUTURES'
+  | 'BINANCE_US'
+  | 'BITFINEX'
+  | 'BITGET'
+  | 'BITMART'
+  | 'BITMEX'
+  | 'BITSTAMP'
+  | 'BITUNIX'
+  | 'BYBIT'
+  | 'COINBASE'
+  | 'CRYPTOCOM'
+  | 'DERIBIT'
+  | 'DYDX'
+  | 'GATEIO'
+  | 'HITBTC'
+  | 'HUOBI'
+  | 'KRAKEN'
+  | 'KUCOIN'
+  | 'MEXC'
+  | 'OKEX'
+  | 'PHEMEX'
+  | 'POLONIEX'
+  | 'UNISWAP';
+
 export interface OrderBookEntry {
   price: number;
   quantity: number;
+  exchanges?: string[];  // List of exchanges contributing to this level
+  exchangeQuantities?: Record<string, number>;
+  totalQuantity?: number; // Total quantity across all exchanges
 }
 
 export interface OrderBookData {
   bids: OrderBookEntry[];
   asks: OrderBookEntry[];
+  timestamp: number;
 }
 
 export interface BaseWebSocketMessage {

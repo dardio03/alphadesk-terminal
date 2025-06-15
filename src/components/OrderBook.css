@@ -312,8 +312,6 @@
   font-weight: 500;
 }
 
-
-
 .orderbook-error {
   padding: 8px;
   margin: 8px;
@@ -323,4 +321,208 @@
   background-color: rgba(255, 61, 113, 0.1);
   border-radius: 4px;
   border: 1px solid rgba(255, 61, 113, 0.2);
+}
+
+.error-message {
+  padding: 8px;
+  margin: 4px 0;
+  border-radius: 4px;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-message.network {
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  color: #856404;
+}
+
+.error-message.api {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
+.error-message.data {
+  background-color: #e2e3e5;
+  border: 1px solid #d6d8db;
+  color: #383d41;
+}
+
+.error-message.rateLimit {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.error-message strong {
+  font-weight: 600;
+}
+
+.orderbook-entry {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 8px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.orderbook-entry:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.orderbook-entry.bid {
+  background: linear-gradient(to right, rgba(0, 255, 0, 0.1), transparent);
+}
+
+.orderbook-entry.ask {
+  background: linear-gradient(to right, rgba(255, 0, 0, 0.1), transparent);
+}
+
+.price {
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 500;
+}
+
+.quantity {
+  font-family: 'Roboto Mono', monospace;
+  opacity: 0.8;
+}
+
+.exchange-breakdown {
+  position: absolute;
+  right: 100%;
+  top: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: none;
+  z-index: 1000;
+  min-width: 200px;
+}
+
+.orderbook-entry:hover .exchange-breakdown {
+  display: block;
+}
+
+.exchange-quantity {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  font-size: 0.9em;
+}
+
+.exchange-quantity .exchange-name {
+  font-weight: 500;
+  color: #666;
+}
+
+.exchange-quantity .quantity {
+  font-family: 'Roboto Mono', monospace;
+}
+
+.depth-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  opacity: 0.1;
+  transition: width 0.3s ease-out;
+}
+
+.bid .depth-bar {
+  background-color: #4CAF50;
+}
+
+.ask .depth-bar {
+  background-color: #F44336;
+}
+
+/* Performance optimizations */
+.orderbook-container {
+  contain: content;
+  will-change: transform;
+}
+
+.orderbook-section {
+  contain: content;
+  will-change: transform;
+}
+
+/* Filter controls */
+.exchange-filters {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+}
+
+.exchange-filter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.exchange-filter:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.exchange-filter.active {
+  background-color: #e3f2fd;
+}
+
+.exchange-filter .count {
+  font-size: 0.8em;
+  color: #666;
+  background: #fff;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+/* Loading states */
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.order-book {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.order-book-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.order-book-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
 }
