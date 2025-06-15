@@ -59,11 +59,7 @@ export default class BYBIT extends Exchange {
       types
     }
   }
-  /**
-   * Sub
-   * @param {WebSocket} api
-   * @param {string} pair
-   */
+
   async subscribe(api, pair) {
     if (!(await super.subscribe(api, pair))) {
       return
@@ -77,21 +73,20 @@ export default class BYBIT extends Exchange {
       topics.push(`liquidation.${realPair}`)
     }
 
-    api.send(
-      JSON.stringify({
-        op: 'subscribe',
-        args: topics
-      })
-    )
-
-    return true
+    try {
+      api.send(
+        JSON.stringify({
+          op: 'subscribe',
+          args: topics
+        })
+      )
+      return true
+    } catch (error) {
+      this.emit('error', { exchange: this.id, error })
+      return false
+    }
   }
 
-  /**
-   * Unsub
-   * @param {WebSocket} api
-   * @param {string} pair
-   */
   async unsubscribe(api, pair) {
     if (!(await super.unsubscribe(api, pair))) {
       return
@@ -105,74 +100,95 @@ export default class BYBIT extends Exchange {
       topics.push(`liquidation.${realPair}`)
     }
 
-    api.send(
-      JSON.stringify({
-        op: 'unsubscribe',
-        args: topics
-      })
-    )
-
-    return true
+    try {
+      api.send(
+        JSON.stringify({
+          op: 'unsubscribe',
+          args: topics
+        })
+      )
+      return true
+    } catch (error) {
+      this.emit('error', { exchange: this.id, error })
+      return false
+    }
   }
 
   formatTrade(trade, isSpot) {
-    let size = +trade.v
-    let pair = trade.s
+    try {
+      let size = +trade.v
+      let pair = trade.s
 
-    if (!isSpot && this.types[trade.s] === 'inverse') {
-      size /= trade.p
-    } else if (isSpot) {
-      pair += '-SPOT'
-    }
+      if (!isSpot && this.types[trade.s] === 'inverse') {
+        size /= trade.p
+      } else if (isSpot) {
+        pair += '-SPOT'
+      }
 
-    return {
-      exchange: this.id,
-      pair,
-      timestamp: +trade.T,
-      price: +trade.p,
-      size,
-      side: trade.S === 'Buy' ? 'buy' : 'sell'
+      return {
+        exchange: this.id,
+        pair,
+        timestamp: +trade.T,
+        price: +trade.p,
+        size,
+        side: trade.S === 'Buy' ? 'buy' : 'sell'
+      }
+    } catch (error) {
+      this.emit('error', { exchange: this.id, error })
+      return null
     }
   }
 
   formatLiquidation(liquidation) {
-    let size = +liquidation.size
+    try {
+      let size = +liquidation.size
 
-    if (this.types[liquidation.symbol] === 'inverse') {
-      size /= liquidation.price
-    }
+      if (this.types[liquidation.symbol] === 'inverse') {
+        size /= liquidation.price
+      }
 
-    return {
-      exchange: this.id,
-      pair: liquidation.symbol,
-      timestamp: +liquidation.updatedTime,
-      size,
-      price: +liquidation.price,
-      side: liquidation.side === 'Buy' ? 'sell' : 'buy',
-      liquidation: true
+      return {
+        exchange: this.id,
+        pair: liquidation.symbol,
+        timestamp: +liquidation.updatedTime,
+        size,
+        price: +liquidation.price,
+        side: liquidation.side === 'Buy' ? 'sell' : 'buy',
+        liquidation: true
+      }
+    } catch (error) {
+      this.emit('error', { exchange: this.id, error })
+      return null
     }
   }
 
   onMessage(event, api) {
-    const json = JSON.parse(event.data)
+    try {
+      const json = JSON.parse(event.data)
 
-    if (!json.data || !json.topic) {
-      return
-    }
-
-    if (json.data) {
-      if (TRADE_TOPIC_REGEX.test(json.topic)) {
-        const isSpot = api.url === SPOT_WS
-
-        return this.emitTrades(
-          api.id,
-          json.data.map(trade => this.formatTrade(trade, isSpot))
-        )
-      } else {
-        return this.emitLiquidations(api.id, [
-          this.formatLiquidation(json.data)
-        ])
+      if (!json.data || !json.topic) {
+        return
       }
+
+      if (json.data) {
+        if (TRADE_TOPIC_REGEX.test(json.topic)) {
+          const isSpot = api.url === SPOT_WS
+          const trades = json.data
+            .map(trade => this.formatTrade(trade, isSpot))
+            .filter(trade => trade !== null)
+
+          if (trades.length > 0) {
+            return this.emitTrades(api.id, trades)
+          }
+        } else {
+          const liquidation = this.formatLiquidation(json.data)
+          if (liquidation) {
+            return this.emitLiquidations(api.id, [liquidation])
+          }
+        }
+      }
+    } catch (error) {
+      this.emit('error', { exchange: this.id, error })
     }
   }
 

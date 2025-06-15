@@ -3,6 +3,9 @@ import styled, { keyframes } from 'styled-components';
 import { formatPrice } from '../utils/formatPrice';
 import { Typography } from './common';
 import { theme } from '../styles/theme';
+import { ExchangeId, OrderBookData } from '../types/exchange';
+import { aggregatorService } from '../services/aggregatorService';
+import { EXCHANGE_ICONS } from '../utils/exchangeIcons';
 
 interface ExchangeData {
   id: string;
@@ -13,19 +16,9 @@ interface ExchangeData {
 }
 
 interface PriceRangeProps {
-  symbol: string;
-  width?: number;
+  symbol?: string;
+  className?: string;
 }
-
-import aggregatorService, { ExchangeId } from '../services/aggregatorService';
-import { OrderBookData } from '../utils/ExchangeService';
-
-const EXCHANGE_ICONS = {
-  binance: 'https://assets.coingecko.com/markets/images/52/small/binance.jpg?1519353250',
-  bybit: 'https://assets.coingecko.com/markets/images/1624/small/bybit_logo.png?1550468762',
-  coinbase: 'https://assets.coingecko.com/markets/images/23/small/Coinbase_Coin.png?1519353250',
-  kraken: 'https://assets.coingecko.com/markets/images/29/small/kraken.jpg?1519353250'
-};
 
 const slideIn = keyframes`
   from {
@@ -159,167 +152,180 @@ const Tooltip = styled.div`
   }
 `;
 
-const PriceRange: React.FC<PriceRangeProps> = ({
-  symbol,
-  width = 800
-}) => {
-  const [previousPrices, setPreviousPrices] = useState<Record<string, number>>({});
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const [exchangeBooks, setExchangeBooks] = useState<{ [key in ExchangeId]?: OrderBookData }>({});
+const PriceRange: React.FC<PriceRangeProps> = ({ symbol = 'BTC/USDT', className = '' }) => {
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [orderBook, setOrderBook] = useState<OrderBookData | null>(null);
+  const [activeExchanges, setActiveExchanges] = useState<Record<ExchangeId, boolean>>({
+    BINANCE: true,
+    BINANCE_FUTURES: false,
+    BINANCE_US: false,
+    BITFINEX: false,
+    BITGET: false,
+    BITMART: false,
+    BITMEX: false,
+    BITSTAMP: false,
+    BITUNIX: false,
+    BYBIT: true,
+    COINBASE: true,
+    CRYPTOCOM: false,
+    DERIBIT: false,
+    DYDX: false,
+    GATEIO: false,
+    HITBTC: false,
+    HUOBI: false,
+    KRAKEN: true,
+    KUCOIN: false,
+    MEXC: false,
+    OKEX: false,
+    PHEMEX: false,
+    POLONIEX: false,
+    UNISWAP: false
+  });
 
   useEffect(() => {
-    const handleExchange = (evt: { exchange: ExchangeId; data: OrderBookData }) => {
-      setExchangeBooks(prev => ({ ...prev, [evt.exchange]: evt.data }));
+    const handleInitialized = () => {
+      setIsInitialized(true);
+      setIsLoading(false);
     };
-    const handleError = (evt: { exchange: string; error: Error }) => setError(evt.error.message);
 
-    aggregatorService.subscribe(symbol, ['BINANCE', 'BYBIT', 'COINBASE', 'KRAKEN']);
-    aggregatorService.on('exchange', handleExchange);
+    const handleError = (error: Error) => {
+      setError(error.message);
+      setIsLoading(false);
+    };
+
+    const handleOrderBookUpdate = (data: OrderBookData) => {
+      setOrderBook(data);
+      setIsLoading(false);
+    };
+
+    aggregatorService.on('initialized', handleInitialized);
     aggregatorService.on('error', handleError);
+    aggregatorService.on('orderbook', handleOrderBookUpdate);
 
     return () => {
-      aggregatorService.off('exchange', handleExchange);
+      aggregatorService.off('initialized', handleInitialized);
       aggregatorService.off('error', handleError);
-      aggregatorService.unsubscribe(symbol);
+      aggregatorService.off('orderbook', handleOrderBookUpdate);
     };
-  }, [symbol]);
-
-  const loading = useMemo(() => {
-    return ['BINANCE', 'BYBIT', 'COINBASE', 'KRAKEN'].some(
-      ex => aggregatorService.getStatus(ex as ExchangeId) === 'connecting'
-    );
-  }, [exchangeBooks]);
-
-  // Get best prices from each exchange
-  const exchanges = useMemo(() => {
-    const now = Date.now();
-    const result: ExchangeData[] = [];
-
-    (Object.entries(exchangeBooks) as [ExchangeId, OrderBookData][]).forEach(([id, book]) => {
-      if (book.bids.length > 0 && book.asks.length > 0) {
-        const price = (book.bids[0].price + book.asks[0].price) / 2;
-        const key = id.toLowerCase();
-        result.push({
-          id: key,
-          name: id.charAt(0) + id.slice(1).toLowerCase(),
-          price,
-          icon: EXCHANGE_ICONS[key as keyof typeof EXCHANGE_ICONS],
-          timestamp: now
-        });
-      }
-    });
-
-    return result;
-  }, [exchangeBooks]);
-
-  const { minPrice, maxPrice } = useMemo(() => {
-    const prices = exchanges.map(e => e.price);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    const padding = (max - min) * 0.1;
-    return {
-      minPrice: min - padding,
-      maxPrice: max + padding
-    };
-  }, [exchanges]);
-
-  const calculatePosition = useCallback((price: number): number => {
-    const range = maxPrice - minPrice;
-    return ((price - minPrice) / range) * 100;
-  }, [minPrice, maxPrice]);
+  }, []);
 
   useEffect(() => {
-    // Update previous prices for price change indication
-    setPreviousPrices(prev => {
-      const next = { ...prev };
-      exchanges.forEach(exchange => {
-        if (!prev[exchange.id]) {
-          next[exchange.id] = exchange.price;
-        }
-      });
-      return next;
-    });
+    if (isInitialized) {
+      const enabledExchanges = Object.entries(activeExchanges)
+        .filter(([_, enabled]) => enabled)
+        .map(([exchange]) => exchange as ExchangeId);
 
-    // After a delay, update previous prices to current
-    const timer = setTimeout(() => {
-      setPreviousPrices(
-        exchanges.reduce((acc, exchange) => ({
-          ...acc,
-          [exchange.id]: exchange.price
-        }), {})
-      );
-    }, 1000);
+      aggregatorService.subscribe(symbol, enabledExchanges);
+    }
 
-    return () => clearTimeout(timer);
-  }, [exchanges]);
+    return () => {
+      const enabledExchanges = Object.entries(activeExchanges)
+        .filter(([_, enabled]) => enabled)
+        .map(([exchange]) => exchange as ExchangeId);
+      aggregatorService.unsubscribe(enabledExchanges);
+    };
+  }, [isInitialized, symbol, activeExchanges]);
 
-  if (loading) {
-    return <div>Loading price range...</div>;
+  const toggleExchange = (exchange: ExchangeId) => {
+    setActiveExchanges(prev => ({
+      ...prev,
+      [exchange]: !prev[exchange]
+    }));
+  };
+
+  const getExchangeStatus = (exchange: ExchangeId) => {
+    return aggregatorService.getExchangeStatus(exchange);
+  };
+
+  if (isLoading) {
+    return (
+      <div className={`flex items-center justify-center p-4 ${className}`}>
+        <div className="text-gray-500">Loading prices...</div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return (
+      <div className={`flex items-center justify-center p-4 ${className}`}>
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
   }
 
+  if (!orderBook) {
+    return (
+      <div className={`flex items-center justify-center p-4 ${className}`}>
+        <div className="text-gray-500">No data available</div>
+      </div>
+    );
+  }
+
+  const bestBid = orderBook.bids[0]?.price || 0;
+  const bestAsk = orderBook.asks[0]?.price || 0;
+  const spread = bestAsk - bestBid;
+  const spreadPercentage = (spread / bestBid) * 100;
+
   return (
-    <Container ref={containerRef} width={width}>
-      <Bar />
-      <PriceLabel style={{ left: '0%' }}>
-        {formatPrice(minPrice)}
-      </PriceLabel>
-      <PriceLabel style={{ left: '100%' }}>
-        {formatPrice(maxPrice)}
-      </PriceLabel>
+    <div className={`p-4 ${className}`}>
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold mb-2">Price Range</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-sm text-gray-500">Best Bid</div>
+            <div className="text-lg font-medium text-green-500">{bestBid.toFixed(2)}</div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-500">Best Ask</div>
+            <div className="text-lg font-medium text-red-500">{bestAsk.toFixed(2)}</div>
+          </div>
+        </div>
+        <div className="mt-2">
+          <div className="text-sm text-gray-500">Spread</div>
+          <div className="text-lg font-medium">{spread.toFixed(2)} ({spreadPercentage.toFixed(2)}%)</div>
+        </div>
+      </div>
 
-      {exchanges.map((exchange) => {
-        const position = calculatePosition(exchange.price);
-        const previousPrice = previousPrices[exchange.id] || exchange.price;
-        const isUp = exchange.price >= previousPrice;
-        const priceDiff = Math.abs(exchange.price - previousPrice);
-        const percentChange = (priceDiff / previousPrice) * 100;
-
-        return (
-          <ExchangeIcon
-            key={exchange.id}
-            position={position}
-            isUp={isUp}
-            data-testid={`exchange-icon-${exchange.id}`}
-          >
-            <img
-              src={exchange.icon}
-              alt={`${exchange.name} icon`}
-              loading="lazy"
-            />
-            <Tooltip>
-              <Typography $variant="body2" $weight="semibold">
-                {exchange.name}
-              </Typography>
-              <Typography $variant="numeric" style={{ marginTop: theme.spacing.xs }}>
-                {formatPrice(exchange.price)}
-              </Typography>
-              <Typography
-                $variant="caption"
-                style={{
-                  marginTop: theme.spacing.xs,
-                  color: isUp ? theme.colors.success.main : theme.colors.error.main
-                }}
+      <div className="mt-4">
+        <h3 className="text-md font-semibold mb-2">Active Exchanges</h3>
+        <div className="grid grid-cols-2 gap-2">
+          {Object.entries(activeExchanges).map(([exchange, enabled]) => {
+            const status = getExchangeStatus(exchange as ExchangeId);
+            const icon = EXCHANGE_ICONS[exchange.toLowerCase() as keyof typeof EXCHANGE_ICONS];
+            
+            return (
+              <div
+                key={exchange}
+                className={`flex items-center p-2 rounded cursor-pointer ${
+                  enabled ? 'bg-blue-100' : 'bg-gray-100'
+                }`}
+                onClick={() => toggleExchange(exchange as ExchangeId)}
               >
-                {isUp ? '▲' : '▼'} {formatPrice(priceDiff)} ({percentChange.toFixed(2)}%)
-              </Typography>
-              <Typography
-                $variant="caption"
-                $color={theme.colors.text.secondary}
-                style={{ marginTop: theme.spacing.xs }}
-              >
-                Last updated: {new Date(exchange.timestamp).toLocaleTimeString()}
-              </Typography>
-            </Tooltip>
-          </ExchangeIcon>
-        );
-      })}
-    </Container>
+                {icon && (
+                  <img
+                    src={icon}
+                    alt={exchange}
+                    className="w-6 h-6 mr-2 rounded-full"
+                  />
+                )}
+                <div className="flex-1">
+                  <div className="text-sm font-medium">{exchange}</div>
+                  <div className={`text-xs ${
+                    status === 'connected' ? 'text-green-500' :
+                    status === 'connecting' ? 'text-yellow-500' :
+                    'text-red-500'
+                  }`}>
+                    {status}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 };
 

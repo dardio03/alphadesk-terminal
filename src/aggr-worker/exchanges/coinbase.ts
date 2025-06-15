@@ -51,15 +51,20 @@ export default class COINBASE extends Exchange {
       return
     }
 
-    api.send(
-      JSON.stringify({
-        type: 'subscribe',
-        channel: 'market_trades',
-        product_ids: [pair]
-      })
-    )
+    try {
+      api.send(
+        JSON.stringify({
+          type: 'subscribe',
+          channel: 'market_trades',
+          product_ids: [pair]
+        })
+      )
 
-    return true
+      return true
+    } catch (error) {
+      this.emit('error', { exchange: this.id, error })
+      return false
+    }
   }
 
   /**
@@ -72,48 +77,62 @@ export default class COINBASE extends Exchange {
       return
     }
 
-    api.send(
-      JSON.stringify({
-        type: 'unsubscribe',
-        ...{
-          channel: 'market_trades',
-          product_ids: [pair]
-        }
-      })
-    )
+    try {
+      api.send(
+        JSON.stringify({
+          type: 'unsubscribe',
+          ...{
+            channel: 'market_trades',
+            product_ids: [pair]
+          }
+        })
+      )
 
-    return true
+      return true
+    } catch (error) {
+      this.emit('error', { exchange: this.id, error })
+      return false
+    }
   }
 
   onMessage(event, api) {
-    const json = JSON.parse(event.data)
+    try {
+      const json = JSON.parse(event.data)
 
-    if (json && json.channel === 'market_trades') {
-      return this.emitTrades(
-        api.id,
-        json.events.reduce((acc, event) => {
-          if (event.type === 'update') {
-            acc.push(
-              ...event.trades.map(trade =>
-                this.formatTrade(trade, trade.product_id)
+      if (json && json.channel === 'market_trades') {
+        return this.emitTrades(
+          api.id,
+          json.events.reduce((acc, event) => {
+            if (event.type === 'update') {
+              acc.push(
+                ...event.trades.map(trade =>
+                  this.formatTrade(trade, trade.product_id)
+                )
               )
-            )
-          }
+            }
 
-          return acc
-        }, [])
-      )
+            return acc
+          }, [])
+        )
+      }
+    } catch (error) {
+      this.emit('error', { exchange: this.id, error })
     }
   }
 
   formatTrade(trade, pair) {
-    return {
-      exchange: this.id,
-      pair: pair,
-      timestamp: +new Date(trade.time),
-      price: +trade.price,
-      size: +trade.size,
-      side: trade.side === 'BUY' ? 'sell' : 'buy'
+    try {
+      return {
+        exchange: this.id,
+        pair: pair,
+        timestamp: +new Date(trade.time),
+        price: +trade.price,
+        size: +trade.size,
+        side: trade.side === 'BUY' ? 'sell' : 'buy'
+      }
+    } catch (error) {
+      this.emit('error', { exchange: this.id, error })
+      return null
     }
   }
 }
