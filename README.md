@@ -34,7 +34,7 @@ A professional-grade cryptocurrency trading terminal built with React and TypeSc
   - Gate.io
   - Crypto.com
   - Bitmart
-  - Exchange implementations live in [`src/aggr-worker/exchanges/`](src/aggr-worker/exchanges/)
+  - Exchange implementations live in [`src/aggr-worker/exchanges/`](src/aggr-worker/exchanges/). The in-app order book currently supports only the exchanges implemented in [`src/utils/ExchangeService.ts`](src/utils/ExchangeService.ts), and additional connectors are being added to provide complete coverage.
 
 ## Technology Stack
 
