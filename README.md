@@ -9,10 +9,32 @@ A professional-grade cryptocurrency trading terminal built with React and TypeSc
 - **Advanced Charting**: TradingView chart integration with customizable indicators
 - **Price Range Analysis**: Visual representation of price ranges and market depth
 - **Responsive Layout**: Draggable and resizable widgets for customized workspace
-- **Multi-Exchange Support**: 
+- **Multi-Exchange Support**:
+  - Bitmex
+  - Binance Futures
+  - Binance US
+  - Kraken
+  - Huobi
   - Binance
+  - Bitfinex
+  - Bitstamp
   - Coinbase
-  - Bybit (coming soon)
+  - HitBTC
+  - OKEx
+  - Poloniex
+  - Deribit
+  - Bybit
+  - Phemex
+  - dYdX
+  - Uniswap
+  - KuCoin
+  - Bitget
+  - Bitunix
+  - MEXC
+  - Gate.io
+  - Crypto.com
+  - Bitmart
+  - Exchange implementations live in [`src/aggr-worker/exchanges/`](src/aggr-worker/exchanges/)
 
 ## Technology Stack
 
