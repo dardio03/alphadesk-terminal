@@ -6,36 +6,12 @@ import { OrderBookProps } from "../types/exchange";
 import { formatPrice, formatQuantity } from "../utils/formatPrice";
 import { ErrorContext } from '../utils/ErrorHandler';
 import ExchangeSettings from './ExchangeSettings';
+import { EXCHANGES } from '../constants/exchanges';
 
 import "./OrderBook.css";
 
 // Define available exchanges
-const AVAILABLE_EXCHANGES = [
-  'binance',
-  'binance_futures',
-  'binance_us',
-  'bitfinex',
-  'bitget',
-  'bitmart',
-  'bitmex',
-  'bitstamp',
-  'bitunix',
-  'bybit',
-  'coinbase',
-  'cryptocom',
-  'deribit',
-  'dydx',
-  'gateio',
-  'hitbtc',
-  'huobi',
-  'kraken',
-  'kucoin',
-  'mexc',
-  'okex',
-  'phemex',
-  'poloniex',
-  'uniswap'
-] as const;
+const AVAILABLE_EXCHANGES = EXCHANGES;
 
 interface AggregatedOrderBookEntry extends OrderBookEntry {
   exchanges: string[];
