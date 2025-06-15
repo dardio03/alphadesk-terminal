@@ -93,17 +93,19 @@ yarn build
 ## Project Structure
 
 ```
+server/                # Webhook server
 src/
-├── components/          # React components
-│   ├── OrderBook/      # Order book related components
-│   ├── LivePrice/      # Price tracking components
-│   └── Charts/         # Chart components
-├── hooks/              # Custom React hooks
-│   ├── useWebSocket    # WebSocket connection hooks
-│   └── useOrderBook    # Order book data hooks
-├── types/              # TypeScript type definitions
-├── utils/              # Utility functions
-├── services/           # API and service integrations
+├── aggr-worker/       # Exchange connectors
+├── worker/            # Order-book aggregation web worker
+├── components/        # React components
+│   ├── OrderBook/     # Order book related components
+│   ├── LivePrice/     # Price tracking components
+│   └── Charts/        # Chart components
+├── hooks/             # Custom React hooks
+│   └── useWebSocket   # WebSocket connection hooks
+├── types/             # TypeScript type definitions
+├── utils/             # Utility functions
+├── services/          # API and service integrations
 └── assets/            # Static assets
 ```
 
