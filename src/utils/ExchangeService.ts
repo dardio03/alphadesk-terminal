@@ -777,9 +777,194 @@ class CoinbaseExchange extends BaseExchange {
   }
 }
 
-class KrakenExchange extends BinanceExchange {
+class KrakenExchange extends BaseExchange {
+  private ws: WebSocket | null = null;
+  private readonly baseUrl = 'wss://ws.kraken.com';
+  private pingInterval: NodeJS.Timeout | null = null;
+  private bidsMap: Map<number, number> = new Map();
+  private asksMap: Map<number, number> = new Map();
+  private config: any;
+
   constructor(config: any = {}) {
-    super(config);
+    super();
+    this.config = config;
+  }
+
+  async connect(): Promise<void> {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - this.lastConnectionAttempt < this.minConnectionInterval) {
+      return;
+    }
+
+    this.lastConnectionAttempt = now;
+    this.status = 'connecting';
+
+    try {
+      this.ws = new WebSocket(this.baseUrl);
+
+      this.ws.onopen = () => {
+        console.log(`[${this.constructor.name}] WebSocket connected`);
+        this.notifyConnect();
+        if (this.symbol) {
+          this.subscribe(this.symbol);
+        }
+        this.pingInterval = setInterval(() => {
+          if (this.ws?.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ event: 'ping' }));
+          }
+        }, 30000);
+      };
+
+      this.ws.onclose = () => {
+        console.log(`[${this.constructor.name}] WebSocket closed`);
+        this.notifyDisconnect();
+        if (this.pingInterval) {
+          clearInterval(this.pingInterval);
+          this.pingInterval = null;
+        }
+        this.ws = null;
+        this.reconnect();
+      };
+
+      this.ws.onerror = (event) => {
+        console.error(`[${this.constructor.name}] WebSocket error:`, event);
+        this.notifyError(new Error('WebSocket error'), 'connection');
+      };
+
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.event === 'subscriptionStatus' && data.status === 'error') {
+            this.notifyError(new Error(data.errorMessage || 'Subscription error'), 'api');
+            return;
+          }
+          this.processMessage(data);
+        } catch (error) {
+          this.notifyError(error as Error, 'data');
+        }
+      };
+    } catch (error) {
+      this.notifyError(error as Error, 'network');
+      this.reconnect();
+    }
+  }
+
+  disconnect(): void {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.status = 'disconnected';
+  }
+
+  subscribe(symbol: string): void {
+    this.symbol = symbol;
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      try {
+        const subscribeMsg = {
+          event: 'subscribe',
+          pair: [symbol],
+          subscription: { name: 'book', depth: 100 }
+        };
+        this.ws.send(JSON.stringify(subscribeMsg));
+      } catch (error) {
+        this.notifyError(error as Error, 'api');
+      }
+    }
+  }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      try {
+        const unsubscribeMsg = {
+          event: 'unsubscribe',
+          pair: [symbol],
+          subscription: { name: 'book', depth: 100 }
+        };
+        this.ws.send(JSON.stringify(unsubscribeMsg));
+      } catch (error) {
+        this.notifyError(error as Error, 'api');
+      }
+    }
+  }
+
+  private processMessage(data: any) {
+    if (Array.isArray(data) && data.length > 1) {
+      const payload = data[1];
+      if (payload.bs || payload.as) {
+        this.bidsMap.clear();
+        this.asksMap.clear();
+        payload.bs?.forEach(([price, qty]: [string, string]) => {
+          const p = parseFloat(price);
+          const q = parseFloat(qty);
+          if (!isNaN(p) && !isNaN(q)) {
+            this.bidsMap.set(p, q);
+          }
+        });
+        payload.as?.forEach(([price, qty]: [string, string]) => {
+          const p = parseFloat(price);
+          const q = parseFloat(qty);
+          if (!isNaN(p) && !isNaN(q)) {
+            this.asksMap.set(p, q);
+          }
+        });
+      } else if (payload.b || payload.a) {
+        payload.b?.forEach(([price, qty]: [string, string]) => {
+          const p = parseFloat(price);
+          const q = parseFloat(qty);
+          if (!isNaN(p)) {
+            if (q === 0) {
+              this.bidsMap.delete(p);
+            } else if (!isNaN(q)) {
+              this.bidsMap.set(p, q);
+            }
+          }
+        });
+        payload.a?.forEach(([price, qty]: [string, string]) => {
+          const p = parseFloat(price);
+          const q = parseFloat(qty);
+          if (!isNaN(p)) {
+            if (q === 0) {
+              this.asksMap.delete(p);
+            } else if (!isNaN(q)) {
+              this.asksMap.set(p, q);
+            }
+          }
+        });
+      } else {
+        return;
+      }
+
+      const bids = Array.from(this.bidsMap.entries()).map(([price, quantity]) => ({
+        price,
+        quantity,
+        exchanges: ['KRAKEN'],
+        exchangeQuantities: { KRAKEN: quantity },
+        totalQuantity: quantity
+      })).sort((a, b) => b.price - a.price).slice(0, 100);
+
+      const asks = Array.from(this.asksMap.entries()).map(([price, quantity]) => ({
+        price,
+        quantity,
+        exchanges: ['KRAKEN'],
+        exchangeQuantities: { KRAKEN: quantity },
+        totalQuantity: quantity
+      })).sort((a, b) => a.price - b.price).slice(0, 100);
+
+      this.notifyOrderBookUpdate({
+        bids,
+        asks,
+        timestamp: Date.now()
+      });
+    }
   }
 }
 
