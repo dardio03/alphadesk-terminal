@@ -117,11 +117,9 @@ src/
 
 ## WebSocket Connections
 
-The terminal maintains WebSocket connections to multiple exchanges for real-time data:
-
-- Binance: `wss://stream.binance.com/ws`
-- Coinbase: `wss://ws-feed.exchange.coinbase.com`
-
+The terminal maintains WebSocket connections to many cryptocurrency exchanges.
+Each exchange has a dedicated module under `src/aggr-worker/exchanges/` that specifies its WebSocket URL.
+Refer to that directory for the full list of supported endpoints.
 Each connection includes automatic reconnection with exponential backoff and proper error handling.
 
 ## Type Safety
