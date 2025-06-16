@@ -159,7 +159,6 @@ const ALL_EXCHANGES: ExchangeId[] = [
   'OKEX',
   'PHEMEX',
   'POLONIEX',
-  'UNISWAP',
   'GEMINI'
 ];
 

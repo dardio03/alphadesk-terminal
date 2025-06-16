@@ -10,7 +10,7 @@ A professional-grade cryptocurrency trading terminal built with React and TypeSc
 - **Price Range Analysis**: Visual representation of price ranges and market depth
 - **Responsive Layout**: Draggable and resizable widgets for customized workspace
 - **Multi-Exchange Support**:
-  - **Full order book, trade and ticker support:**
+  - **Fully implemented connectors:**
     - Binance
     - Bybit
     - Coinbase
@@ -18,7 +18,7 @@ A professional-grade cryptocurrency trading terminal built with React and TypeSc
     - Phemex
     - Poloniex
     - HitBTC
-  - **Additional connectors (order book coming soon):**
+  - **Placeholder connectors (order book coming soon):**
     - Bitmex
     - Binance Futures
     - Binance US
@@ -28,7 +28,7 @@ A professional-grade cryptocurrency trading terminal built with React and TypeSc
     - OKEx
     - Deribit
     - dYdX
-    - Uniswap
+    - Uniswap *(no order book; trades only via The Graph)*
     - KuCoin
     - Bitget
     - Bitunix
@@ -36,7 +36,7 @@ A professional-grade cryptocurrency trading terminal built with React and TypeSc
     - Gate.io
     - Crypto.com
     - Bitmart
-  - Exchange implementations live in [`src/aggr-worker/exchanges/`](src/aggr-worker/exchanges/). The in-app order book currently supports only the exchanges implemented in [`src/utils/ExchangeService.ts`](src/utils/ExchangeService.ts), and additional connectors are being added to provide complete coverage.
+  - Exchange implementations live in [`src/aggr-worker/exchanges/`](src/aggr-worker/exchanges/). The in-app order book currently supports only the exchanges implemented in [`src/utils/ExchangeService.ts`](src/utils/ExchangeService.ts). Additional connectors reside in [`src/utils/exchanges/`](src/utils/exchanges/) and may not yet provide order-book data.
 ## Technology Stack
 
 - **Frontend**:
@@ -124,6 +124,8 @@ The terminal maintains WebSocket connections to many cryptocurrency exchanges.
 Each exchange has a dedicated module under `src/aggr-worker/exchanges/` that specifies its WebSocket URL.
 Refer to that directory for the full list of supported endpoints.
 Each connection includes automatic reconnection with exponential backoff and proper error handling.
+
+> **Note**: Uniswap is an automated market maker (AMM) and does not expose a real-time order-book WebSocket. The current connector only retrieves trades via The Graph API.
 
 ### Adding a New Exchange Connector
 
