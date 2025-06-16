@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import BitfinexExchange from './exchanges/bitfinex';
 
 export interface ExchangeConnection {
   connect(): Promise<void>;
@@ -96,7 +97,7 @@ export class ExchangeFactory {
         exchange = new CoinbaseExchange(config);
         break;
       case 'BITFINEX':
-        exchange = new BitfinexExchangeStub();
+        exchange = new BitfinexExchange();
         break;
       case 'BITGET':
         exchange = new BitgetExchangeStub();
@@ -2171,10 +2172,6 @@ class BinanceUsExchange extends BasicWsExchange {
   }
 }
 
-class BitfinexExchangeStub extends BasicWsExchange {
-  constructor() {
-    super('wss://api-pub.bitfinex.com/ws/2');
-  }
 }
 
 class BitgetExchangeStub extends BasicWsExchange {
@@ -2783,7 +2780,7 @@ ExchangeFactory.registerExchange('BYBIT', new BybitExchange());
 ExchangeFactory.registerExchange('AGGR', new AggrExchange());
 ExchangeFactory.registerExchange('BINANCE_FUTURES', new BinanceFuturesExchange());
 ExchangeFactory.registerExchange('BINANCE_US', new BinanceUsExchange());
-ExchangeFactory.registerExchange('BITFINEX', new BitfinexExchangeStub());
+ExchangeFactory.registerExchange('BITFINEX', new BitfinexExchange());
 ExchangeFactory.registerExchange('BITGET', new BitgetExchangeStub());
 ExchangeFactory.registerExchange('BITMART', new BitmartExchangeStub());
 ExchangeFactory.registerExchange('BITMEX', new BitmexExchangeStub());
