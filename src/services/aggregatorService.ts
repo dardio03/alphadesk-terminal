@@ -3,6 +3,8 @@ import ExchangeFactory, {
   OrderBookData,
   ExchangeConnection,
   OrderBookEntry,
+  TradeData,
+  TickerData,
 } from "../utils/ExchangeService";
 import { ExchangeId } from '../types/exchange';
 
@@ -176,6 +178,18 @@ export class AggregatorService extends EventEmitter {
           this.handleUpdate(exchangeId, data);
         });
 
+        if (exchange.onTradeUpdate) {
+          exchange.onTradeUpdate((trade: TradeData) => {
+            this.emit('trades', { exchange: exchangeId, trade });
+          });
+        }
+
+        if (exchange.onTickerUpdate) {
+          exchange.onTickerUpdate((ticker: TickerData) => {
+            this.emit('ticker', { exchange: exchangeId, ticker });
+          });
+        }
+
         exchange.onError((error) => {
           console.error(`Exchange ${exchangeId} error:`, error);
           this.exchangeStatuses[exchangeId] = 'error';
@@ -205,6 +219,12 @@ export class AggregatorService extends EventEmitter {
         this.exchangeStatuses[exchangeId] = 'connecting';
         await exchange.connect();
         await exchange.subscribe(symbol);
+        if (exchange.subscribeTrades) {
+          exchange.subscribeTrades(symbol);
+        }
+        if (exchange.subscribeTicker) {
+          exchange.subscribeTicker(symbol);
+        }
       } catch (error) {
         console.error(`Failed to connect to exchange ${exchangeId}:`, error);
         this.exchangeStatuses[exchangeId] = 'error';
