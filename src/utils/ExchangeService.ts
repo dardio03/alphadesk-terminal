@@ -8,10 +8,14 @@ export interface ExchangeConnection {
   subscribe(symbol: string): void;
   unsubscribe(symbol: string): void;
   onOrderBookUpdate(callback: (data: OrderBookData) => void): void;
+  onTradeUpdate?(callback: (trade: TradeData) => void): void;
+  onTickerUpdate?(callback: (ticker: TickerData) => void): void;
   onError(callback: (error: Error) => void): void;
   getOrderBookData(): OrderBookData | null;
   onConnect(callback: () => void): void;
   onDisconnect(callback: () => void): void;
+  subscribeTrades?(symbol: string): void;
+  subscribeTicker?(symbol: string): void;
 }
 
 export interface OrderBookData {
@@ -26,6 +30,20 @@ export interface OrderBookEntry {
   exchanges?: string[];
   exchangeQuantities?: Record<string, number>;
   totalQuantity?: number;
+}
+
+export interface TradeData {
+  price: number;
+  size: number;
+  side: 'buy' | 'sell';
+  timestamp: number;
+}
+
+export interface TickerData {
+  price: number;
+  volume?: number;
+  volumeDelta?: number;
+  timestamp: number;
 }
 
 import { connectionManager } from './ConnectionManager';
@@ -147,9 +165,11 @@ export class ExchangeFactory {
   }
 }
 
-abstract class BaseExchange extends EventEmitter implements ExchangeConnection {
+export abstract class BaseExchange extends EventEmitter implements ExchangeConnection {
   protected symbol: string = '';
   protected orderBookCallbacks: ((data: OrderBookData) => void)[] = [];
+  protected tradeCallbacks: ((trade: TradeData) => void)[] = [];
+  protected tickerCallbacks: ((ticker: TickerData) => void)[] = [];
   protected errorCallbacks: ((error: Error) => void)[] = [];
   protected connectCallbacks: (() => void)[] = [];
   protected disconnectCallbacks: (() => void)[] = [];
@@ -178,6 +198,14 @@ abstract class BaseExchange extends EventEmitter implements ExchangeConnection {
     this.orderBookCallbacks.push(callback);
   }
 
+  onTradeUpdate(callback: (trade: TradeData) => void): void {
+    this.tradeCallbacks.push(callback);
+  }
+
+  onTickerUpdate(callback: (ticker: TickerData) => void): void {
+    this.tickerCallbacks.push(callback);
+  }
+
   onError(callback: (error: Error) => void): void {
     this.errorCallbacks.push(callback);
   }
@@ -190,9 +218,25 @@ abstract class BaseExchange extends EventEmitter implements ExchangeConnection {
     this.disconnectCallbacks.push(callback);
   }
 
+  subscribeTrades(_symbol: string): void {
+    // Optional override
+  }
+
+  subscribeTicker(_symbol: string): void {
+    // Optional override
+  }
+
   protected notifyOrderBookUpdate(data: OrderBookData): void {
     this.latestOrderBook = data;
     this.orderBookCallbacks.forEach(cb => cb(data));
+  }
+
+  protected notifyTradeUpdate(trade: TradeData): void {
+    this.tradeCallbacks.forEach(cb => cb(trade));
+  }
+
+  protected notifyTickerUpdate(ticker: TickerData): void {
+    this.tickerCallbacks.forEach(cb => cb(ticker));
   }
 
   protected notifyConnect(): void {
@@ -360,6 +404,73 @@ class BasicWsExchange extends BaseExchange {
     }
   }
 
+  subscribeTrades(symbol: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const normalizedSymbol = symbol.replace('USDT', 'USD');
+    try {
+      const msg = {
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method: 'public/subscribe',
+        params: { channels: [`trades.${normalizedSymbol}.100ms`] },
+      };
+      this.ws.send(JSON.stringify(msg));
+    } catch (error) {
+      this.notifyError(error as Error, 'api');
+    }
+  }
+
+  subscribeTrades(symbol: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const normalizedSymbol = symbol.replace('USDT', 'USD');
+    try {
+      const msg = {
+        method: 'subscribeTrades',
+        params: { symbol: normalizedSymbol },
+      };
+      this.ws.send(JSON.stringify(msg));
+    } catch (error) {
+      this.notifyError(error as Error, 'api');
+    }
+  }
+
+  subscribeTrades(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      try {
+        const msg = { id: Date.now(), type: 'subscribe', channel: 'trades', symbols: [symbol] };
+        this.ws.send(JSON.stringify(msg));
+      } catch (error) {
+        this.notifyError(error as Error, 'api');
+      }
+    }
+  }
+
+  subscribeTrades(symbol: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    try {
+      this.ws.send(
+        JSON.stringify({ id: Date.now(), method: 'trade.subscribe', params: [symbol] })
+      );
+    } catch (error) {
+      this.notifyError(error as Error, 'api');
+    }
+  }
+
+  subscribeTrades(symbol: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const krakenSymbol = this.convertSymbol(symbol);
+    try {
+      const msg = {
+        event: 'subscribe',
+        pair: [krakenSymbol],
+        subscription: { name: 'trade' },
+      };
+      this.ws.send(JSON.stringify(msg));
+    } catch (error) {
+      this.notifyError(error as Error, 'api');
+    }
+  }
+
   unsubscribe(symbol: string): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       // Exchange specific unsubscription should be implemented here
@@ -489,7 +600,30 @@ class BinanceExchange extends BaseExchange {
     }
   }
 
+  subscribeTrades(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(
+        JSON.stringify({
+          method: 'SUBSCRIBE',
+          params: [`${symbol.toLowerCase()}@trade`],
+          id: Date.now()
+        })
+      );
+    }
+  }
+
   private processMessage(data: any) {
+    if (data && data.e === 'trade') {
+      const trade: TradeData = {
+        price: parseFloat(data.p),
+        size: parseFloat(data.q),
+        side: data.m ? 'sell' : 'buy',
+        timestamp: data.T,
+      };
+      this.notifyTradeUpdate(trade);
+      return;
+    }
+
     if (!data || !data.bids || !data.asks) {
       return;
     }
@@ -676,7 +810,31 @@ class BybitExchange extends BaseExchange {
     }
   }
 
+  subscribeTrades(symbol: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    try {
+      this.ws.send(JSON.stringify({ op: 'subscribe', args: [`publicTrade.${symbol}`] }));
+    } catch (error) {
+      this.notifyError(error as Error, 'api');
+    }
+  }
+
   private processMessage(data: any) {
+    if (data && data.topic && data.topic.startsWith('publicTrade')) {
+      try {
+        const trades = data.data.map((t: any) => ({
+          price: parseFloat(t.p),
+          size: parseFloat(t.v),
+          side: t.S === 'Buy' ? 'buy' : 'sell',
+          timestamp: +t.T,
+        }));
+        trades.forEach(trade => this.notifyTradeUpdate(trade));
+      } catch (error) {
+        this.notifyError(error as Error, 'parsing');
+      }
+      return;
+    }
+
     if (!data || !data.topic || !data.topic.startsWith('orderbook')) {
       return;
     }
@@ -894,6 +1052,22 @@ class CoinbaseExchange extends BaseExchange {
     }
   }
 
+  subscribeTrades(symbol: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const normalizedSymbol = symbol.replace('USDT', 'USD');
+    try {
+      this.ws.send(
+        JSON.stringify({
+          type: 'subscribe',
+          channel: 'matches',
+          product_ids: [normalizedSymbol],
+        })
+      );
+    } catch (error) {
+      this.notifyError(error as Error, 'api');
+    }
+  }
+
   unsubscribe(symbol: string): void {
     if (!symbol) {
       console.error('[COINBASE] Cannot unsubscribe: No symbol provided');
@@ -933,6 +1107,89 @@ class CoinbaseExchange extends BaseExchange {
     if (data.type === 'error') {
       console.error('[COINBASE] API error:', data);
       this.notifyError(data.message || 'API error', 'api');
+      return;
+    }
+
+    // Handle trade messages
+    if (data.type === 'match') {
+      const trade: TradeData = {
+        price: parseFloat(data.price),
+        size: parseFloat(data.size),
+        side: data.side === 'sell' ? 'sell' : 'buy',
+        timestamp: +new Date(data.time),
+      };
+      this.notifyTradeUpdate(trade);
+      return;
+    }
+
+    // Handle trade updates
+    if (data.feed === 'trade' && data.price && data.qty) {
+      const trade: TradeData = {
+        price: parseFloat(data.price),
+        size: parseFloat(data.qty),
+        side: data.side === 'sell' ? 'sell' : 'buy',
+        timestamp: data.time,
+      };
+      this.notifyTradeUpdate(trade);
+      return;
+    } else if (Array.isArray(data) && Array.isArray(data[1])) {
+      const pair = data[3];
+      data[1].forEach((t: any[]) => {
+        const trade: TradeData = {
+          price: parseFloat(t[0]),
+          size: parseFloat(t[1]),
+          side: t[3] === 'b' ? 'buy' : 'sell',
+          timestamp: t[2] * 1000,
+        };
+        this.notifyTradeUpdate(trade);
+      });
+      return;
+    }
+
+    // Handle trade updates
+    if (Array.isArray(data.trades)) {
+      try {
+        data.trades.forEach((t: any) => {
+          const trade: TradeData = {
+            price: parseFloat(t[2]),
+            size: parseFloat(t[3]),
+            side: t[1] === 'Buy' ? 'buy' : 'sell',
+            timestamp: t[0] / 1000000,
+          };
+          this.notifyTradeUpdate(trade);
+        });
+      } catch (error) {
+        this.notifyError(error as Error, 'parsing');
+      }
+      return;
+    }
+
+    // Handle trade updates
+    if (data.method === 'updateTrades' && data.params?.data) {
+      data.params.data.forEach((t: any) => {
+        const trade: TradeData = {
+          price: parseFloat(t.price),
+          size: parseFloat(t.quantity),
+          side: t.side,
+          timestamp: +new Date(t.timestamp),
+        };
+        this.notifyTradeUpdate(trade);
+      });
+      return;
+    }
+
+    // Handle trade updates
+    if (data.method === 'subscription' && data.params?.channel?.startsWith('trades.')) {
+      const trades = data.params.data || [];
+      trades.forEach((t: any) => {
+        const trade: TradeData = {
+          price: parseFloat(t.price),
+          size: parseFloat(t.amount),
+          side: t.direction,
+          timestamp: +t.timestamp,
+        };
+        this.notifyTradeUpdate(trade);
+      });
       return;
     }
 
@@ -1663,6 +1920,17 @@ class PoloniexExchange extends BaseExchange {
       } catch (error) {
         this.notifyError(error as Error, 'data');
       }
+    }
+    if (data.channel === 'trades' && Array.isArray(data.data)) {
+      data.data.forEach((t: any) => {
+        const trade: TradeData = {
+          price: parseFloat(t.price),
+          size: parseFloat(t.amount) / parseFloat(t.price),
+          side: t.takerSide,
+          timestamp: t.createTime,
+        };
+        this.notifyTradeUpdate(trade);
+      });
     }
   }
 }
