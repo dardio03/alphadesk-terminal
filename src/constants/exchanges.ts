@@ -21,8 +21,7 @@ export const EXCHANGES = [
   'MEXC',
   'OKEX',
   'PHEMEX',
-  'POLONIEX',
-  'UNISWAP'
+  'POLONIEX'
 ] as const;
 
 export type ExchangeKey = typeof EXCHANGES[number];
