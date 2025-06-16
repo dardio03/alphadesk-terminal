@@ -146,9 +146,6 @@ export class ExchangeFactory {
       case 'POLONIEX':
         exchange = new PoloniexExchange(config);
         break;
-      case 'UNISWAP':
-        exchange = new UniswapExchangeStub();
-        break;
       case 'HITBTC':
         exchange = new HitbtcExchange(config);
         break;
@@ -2771,11 +2768,6 @@ class OkexExchangeStub extends BasicWsExchange {
   }
 }
 
-class UniswapExchangeStub extends BasicWsExchange {
-  constructor() {
-    super('');
-  }
-}
 
 // Register all exchanges
 ExchangeFactory.registerExchange('BINANCE', new BinanceExchange());
@@ -2801,7 +2793,6 @@ ExchangeFactory.registerExchange('MEXC', new MexcExchangeStub());
 ExchangeFactory.registerExchange('OKEX', new OkexExchangeStub());
 ExchangeFactory.registerExchange('PHEMEX', new PhemexExchange());
 ExchangeFactory.registerExchange('POLONIEX', new PoloniexExchange());
-ExchangeFactory.registerExchange('UNISWAP', new UniswapExchangeStub());
 ExchangeFactory.registerExchange('HITBTC', new HitbtcExchange());
 
 export default ExchangeFactory;
