@@ -102,7 +102,7 @@ export class ExchangeFactory {
         exchange = new CryptocomExchangeStub();
         break;
       case 'DERIBIT':
-        exchange = new DeribitExchangeStub();
+        exchange = new DeribitExchangeStub(config);
         break;
       case 'DYDX':
         exchange = new DydxExchangeStub();
@@ -111,7 +111,7 @@ export class ExchangeFactory {
         exchange = new GateioExchangeStub();
         break;
       case 'HUOBI':
-        exchange = new HuobiExchangeStub();
+        exchange = new HuobiExchangeStub(config);
         break;
       case 'PHEMEX':
         exchange = new PhemexExchange(config);
@@ -719,9 +719,16 @@ class BybitExchange extends BaseExchange {
 
 class CoinbaseExchange extends BaseExchange {
   private ws: WebSocket | null = null;
-  private readonly baseUrl = 'wss://ws-feed.pro.coinbase.com';
+  private readonly baseUrl = 'wss://ws-feed.exchange.coinbase.com';
   private config: any;
   private pingInterval: NodeJS.Timeout | null = null;
+  private lastPingTime: number = 0;
+  private readonly pingIntervalMs = 20000;
+  private readonly pingTimeoutMs = 10000;
+  protected reconnectAttempts = 0;
+  protected readonly maxReconnectAttempts = 5;
+  protected readonly reconnectDelay = 2000;
+  private isConnecting = false;
 
   constructor(config: any = {}) {
     super();
@@ -729,7 +736,263 @@ class CoinbaseExchange extends BaseExchange {
   }
 
   async connect(): Promise<void> {
+    if (this.status === 'connected' || this.isConnecting) {
+      return;
+    }
+
+    try {
+      this.isConnecting = true;
+    this.status = 'connecting';
+    this.ws = new WebSocket(this.baseUrl);
+
+    this.ws.onopen = () => {
+        console.log('[COINBASE] WebSocket connected');
+        this.isConnecting = false;
+      this.reconnectAttempts = 0;
+      this.notifyConnect();
+        this.setupPingInterval();
+        
+        // Only subscribe if we have a symbol
+      if (this.symbol) {
+        this.subscribe(this.symbol);
+      }
+    };
+
+    this.ws.onclose = () => {
+        console.log('[COINBASE] WebSocket closed');
+        this.isConnecting = false;
+        this.cleanup();
+      this.notifyDisconnect();
+        this.handleReconnect(this.constructor.name);
+      };
+
+      this.ws.onerror = (error) => {
+        console.error('[COINBASE] WebSocket error:', error);
+        this.isConnecting = false;
+        this.notifyError('WebSocket error', 'network');
+    };
+
+    this.ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        this.processMessage(data);
+      } catch (error) {
+          console.error('[COINBASE] Error processing message:', error);
+          this.notifyError('Failed to process message', 'data');
+        }
+      };
+
+    } catch (error) {
+      this.isConnecting = false;
+      console.error('[COINBASE] Connection error:', error);
+      this.notifyError('Connection error', 'network');
+      throw error;
+    }
+  }
+
+  private setupPingInterval() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+    }
+
+    this.pingInterval = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        const now = Date.now();
+        if (now - this.lastPingTime > this.pingTimeoutMs) {
+          console.log('[COINBASE] Ping timeout, reconnecting...');
+          this.reconnect();
+          return;
+        }
+
+        try {
+          this.ws.send(JSON.stringify({ type: 'ping' }));
+          this.lastPingTime = now;
+        } catch (error) {
+          console.error('[COINBASE] Error sending ping:', error);
+          this.reconnect();
+        }
+      }
+    }, this.pingIntervalMs);
+  }
+
+  private cleanup() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+    this.lastPingTime = 0;
+    this.isConnecting = false;
+  }
+
+  disconnect(): void {
+    this.cleanup();
     if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.status = 'disconnected';
+  }
+
+  reconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('[COINBASE] Max reconnect attempts reached');
+      this.notifyError('Max reconnect attempts reached', 'network');
+      // Reset reconnect attempts after a longer delay
+      setTimeout(() => {
+    this.reconnectAttempts = 0;
+        this.connect().catch(error => {
+          console.error('[COINBASE] Reconnect failed:', error);
+          this.notifyError('Reconnect failed', 'network');
+        });
+      }, 30000); // Wait 30 seconds before trying again
+      return;
+    }
+
+    this.cleanup();
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+
+    this.reconnectAttempts++;
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    
+    console.log(`[COINBASE] Attempting to reconnect in ${delay}ms...`);
+    setTimeout(() => {
+      this.connect().catch(error => {
+        console.error('[COINBASE] Reconnect failed:', error);
+        this.notifyError('Reconnect failed', 'network');
+      });
+    }, delay);
+  }
+
+  subscribe(symbol: string): void {
+    if (!symbol) {
+      console.error('[COINBASE] Cannot subscribe: No symbol provided');
+      return;
+    }
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('[COINBASE] Cannot subscribe: WebSocket not connected');
+      return;
+    }
+
+    this.symbol = symbol;
+    const normalizedSymbol = symbol.replace('USDT', 'USD');
+
+    try {
+      const subscribeMsg = {
+        type: 'subscribe',
+        product_ids: [normalizedSymbol],
+        channels: ['level2']
+      };
+      this.ws.send(JSON.stringify(subscribeMsg));
+      console.log(`[COINBASE] Subscribed to ${normalizedSymbol}`);
+    } catch (error) {
+      console.error('[COINBASE] Error subscribing:', error);
+      this.notifyError('Failed to subscribe', 'subscription');
+    }
+  }
+
+  unsubscribe(symbol: string): void {
+    if (!symbol) {
+      console.error('[COINBASE] Cannot unsubscribe: No symbol provided');
+      return;
+    }
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const normalizedSymbol = symbol.replace('USDT', 'USD');
+
+    try {
+      const unsubscribeMsg = {
+        type: 'unsubscribe',
+        product_ids: [normalizedSymbol],
+        channels: ['level2']
+      };
+      this.ws.send(JSON.stringify(unsubscribeMsg));
+      console.log(`[COINBASE] Unsubscribed from ${normalizedSymbol}`);
+    } catch (error) {
+      console.error('[COINBASE] Error unsubscribing:', error);
+      this.notifyError('Failed to unsubscribe', 'subscription');
+    }
+  }
+
+  private processMessage(data: any): void {
+    if (!data) return;
+
+    // Handle ping/pong
+    if (data.type === 'pong') {
+      this.lastPingTime = Date.now();
+      return;
+    }
+
+    // Handle error messages
+    if (data.type === 'error') {
+      console.error('[COINBASE] API error:', data);
+      this.notifyError(data.message || 'API error', 'api');
+      return;
+    }
+
+    // Handle orderbook updates
+    if (data.type === 'snapshot' || data.type === 'l2update') {
+      const { product_id, bids, asks } = data;
+      
+      if (!product_id || (!bids && !asks)) return;
+
+      const orderBook: OrderBookData = {
+        bids: (bids || []).map(([price, quantity]: [string, string]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity),
+          exchanges: ['COINBASE'],
+          exchangeQuantities: { 'COINBASE': parseFloat(quantity) }
+        })),
+        asks: (asks || []).map(([price, quantity]: [string, string]) => ({
+            price: parseFloat(price),
+            quantity: parseFloat(quantity),
+          exchanges: ['COINBASE'],
+          exchangeQuantities: { 'COINBASE': parseFloat(quantity) }
+        })),
+        timestamp: Date.now()
+      };
+
+      this.notifyOrderBookUpdate(orderBook);
+    }
+  }
+}
+
+class KrakenExchange extends BaseExchange {
+  private ws: WebSocket | null = null;
+  private readonly baseUrl = 'wss://ws.kraken.com';
+  private config: any;
+  private pingInterval: NodeJS.Timeout | null = null;
+  private lastPingTime: number = 0;
+  private readonly pingIntervalMs = 20000;
+  private readonly pingTimeoutMs = 10000;
+  protected reconnectAttempts = 0;
+  protected readonly maxReconnectAttempts = 10;
+  protected readonly reconnectDelay = 2000;
+  private isConnecting = false;
+  protected lastConnectionAttempt = 0;
+  protected readonly minConnectionInterval = 5000;
+
+  constructor(config: any = {}) {
+    super();
+    this.config = config;
+  }
+
+  private convertSymbol(symbol: string): string {
+    // Convert BTCUSDT to XBT/USD for Kraken
+    return symbol
+      .replace('BTC', 'XBT')
+      .replace('USDT', 'USD')
+      .replace(/([A-Z]+)([A-Z]+)/, '$1/$2');
+  }
+
+  async connect(): Promise<void> {
+    if (this.status === 'connected' || this.isConnecting) {
       return;
     }
 
@@ -741,71 +1004,92 @@ class CoinbaseExchange extends BaseExchange {
     }
     this.lastConnectionAttempt = Date.now();
 
-    this.status = 'connecting';
-    this.ws = new WebSocket(this.baseUrl);
+    try {
+      this.isConnecting = true;
+      this.status = 'connecting';
+      this.ws = new WebSocket(this.baseUrl);
 
-    this.ws.onopen = () => {
-      console.log(`[${this.constructor.name}] WebSocket connected`);
-      this.reconnectAttempts = 0;
-      this.notifyConnect();
-      if (this.symbol) {
-        this.subscribe(this.symbol);
-      }
-      // Start ping interval
-      this.pingInterval = setInterval(() => {
-        if (this.ws?.readyState === WebSocket.OPEN) {
-          this.ws.send(JSON.stringify({ type: 'ping' }));
+      this.ws.onopen = () => {
+        console.log('[KRAKEN] WebSocket connected');
+        this.isConnecting = false;
+        this.reconnectAttempts = 0;
+        this.notifyConnect();
+        this.setupPingInterval();
+        
+        // Only subscribe if we have a symbol
+        if (this.symbol) {
+          this.subscribe(this.symbol);
         }
-      }, 30000);
-    };
+      };
 
-    this.ws.onclose = () => {
-      console.log(`[${this.constructor.name}] WebSocket closed`);
-      this.notifyDisconnect();
-      if (this.pingInterval) {
-        clearInterval(this.pingInterval);
-        this.pingInterval = null;
-      }
-      this.ws = null;
+      this.ws.onclose = () => {
+        console.log('[KRAKEN] WebSocket closed');
+        this.isConnecting = false;
+        this.cleanup();
+        this.notifyDisconnect();
+        this.handleReconnect(this.constructor.name);
+      };
 
-      // Attempt to reconnect
-      if (this.reconnectAttempts < this.maxReconnectAttempts) {
-        this.reconnectAttempts++;
-        this.reconnectDelay *= 2; // Exponential backoff
-        this.reconnectTimeout = setTimeout(() => {
-          this.connect();
-        }, this.reconnectDelay);
-      }
-    };
+      this.ws.onerror = (error) => {
+        console.error('[KRAKEN] WebSocket error:', error);
+        this.isConnecting = false;
+        this.notifyError('WebSocket error', 'network');
+      };
 
-    this.ws.onerror = (event) => {
-      console.error(`[${this.constructor.name}] WebSocket error:`, event);
-      this.notifyError(new Error('WebSocket error'), 'connection');
-    };
-
-    this.ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'error') {
-          this.notifyError(new Error(data.message || 'API error'), 'api');
-          return;
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.processMessage(data);
+        } catch (error) {
+          console.error('[KRAKEN] Error processing message:', error);
+          this.notifyError('Failed to process message', 'data');
         }
-        this.processMessage(data);
-      } catch (error) {
-        this.notifyError(error as Error, 'parsing');
-      }
-    };
+      };
+
+    } catch (error) {
+      this.isConnecting = false;
+      console.error('[KRAKEN] Connection error:', error);
+      this.notifyError('Connection error', 'network');
+      throw error;
+    }
   }
 
-  disconnect(): void {
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
+  private setupPingInterval() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
     }
+
+    this.pingInterval = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        const now = Date.now();
+        if (now - this.lastPingTime > this.pingTimeoutMs) {
+          console.log('[KRAKEN] Ping timeout, reconnecting...');
+      this.reconnect();
+          return;
+        }
+
+        try {
+          this.ws.send(JSON.stringify({ event: 'ping' }));
+          this.lastPingTime = now;
+        } catch (error) {
+          console.error('[KRAKEN] Error sending ping:', error);
+          this.reconnect();
+        }
+      }
+    }, this.pingIntervalMs);
+  }
+
+  private cleanup() {
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
     }
+    this.lastPingTime = 0;
+    this.isConnecting = false;
+  }
+
+  disconnect(): void {
+    this.cleanup();
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -814,307 +1098,163 @@ class CoinbaseExchange extends BaseExchange {
   }
 
   reconnect(): void {
-    this.disconnect();
-    this.reconnectAttempts = 0;
-    this.reconnectDelay = 1000;
-    this.connect();
-  }
-
-  subscribe(symbol: string): void {
-    this.symbol = symbol;
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('[KRAKEN] Max reconnect attempts reached');
+      this.notifyError('Max reconnect attempts reached', 'network');
+      // Reset reconnect attempts after a longer delay
+      setTimeout(() => {
+        this.reconnectAttempts = 0;
+        this.connect().catch(error => {
+          console.error('[KRAKEN] Reconnect failed:', error);
+          this.notifyError('Reconnect failed', 'network');
+        });
+      }, 30000); // Wait 30 seconds before trying again
       return;
     }
 
-    try {
-      this.ws.send(JSON.stringify({
-        type: 'subscribe',
-        product_ids: [symbol],
-        channels: ['level2']
-      }));
-    } catch (error) {
-      this.notifyError(error as Error, 'api');
-    }
-  }
-
-  unsubscribe(symbol: string): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    try {
-      this.ws.send(JSON.stringify({
-        type: 'unsubscribe',
-        product_ids: [symbol],
-        channels: ['level2']
-      }));
-    } catch (error) {
-      this.notifyError(error as Error, 'api');
-    }
-  }
-
-  private processMessage(data: any) {
-    if (!data || !data.type || data.type !== 'snapshot' && data.type !== 'l2update') {
-      return;
-    }
-
-    try {
-      let bids: OrderBookEntry[] = [];
-      let asks: OrderBookEntry[] = [];
-
-      if (data.type === 'snapshot') {
-        bids = data.bids.map(([price, quantity]: [string, string]) => ({
-          price: parseFloat(price),
-          quantity: parseFloat(quantity),
-          exchanges: [this.constructor.name],
-          exchangeQuantities: { [this.constructor.name]: parseFloat(quantity) },
-          totalQuantity: parseFloat(quantity)
-        })).filter((entry: OrderBookEntry) => entry.price > 0 && entry.quantity > 0);
-
-        asks = data.asks.map(([price, quantity]: [string, string]) => ({
-          price: parseFloat(price),
-          quantity: parseFloat(quantity),
-          exchanges: [this.constructor.name],
-          exchangeQuantities: { [this.constructor.name]: parseFloat(quantity) },
-          totalQuantity: parseFloat(quantity)
-        })).filter((entry: OrderBookEntry) => entry.price > 0 && entry.quantity > 0);
-      } else if (data.type === 'l2update') {
-        bids = data.changes
-          .filter(([side]: [string]) => side === 'buy')
-          .map(([, price, quantity]: [string, string, string]) => ({
-            price: parseFloat(price),
-            quantity: parseFloat(quantity),
-            exchanges: [this.constructor.name],
-            exchangeQuantities: { [this.constructor.name]: parseFloat(quantity) },
-            totalQuantity: parseFloat(quantity)
-          })).filter((entry: OrderBookEntry) => entry.price > 0 && entry.quantity > 0);
-
-        asks = data.changes
-          .filter(([side]: [string]) => side === 'sell')
-          .map(([, price, quantity]: [string, string, string]) => ({
-            price: parseFloat(price),
-            quantity: parseFloat(quantity),
-            exchanges: [this.constructor.name],
-            exchangeQuantities: { [this.constructor.name]: parseFloat(quantity) },
-            totalQuantity: parseFloat(quantity)
-          })).filter((entry: OrderBookEntry) => entry.price > 0 && entry.quantity > 0);
-      }
-
-      // Sort bids in descending order and asks in ascending order
-      bids.sort((a: OrderBookEntry, b: OrderBookEntry) => b.price - a.price);
-      asks.sort((a: OrderBookEntry, b: OrderBookEntry) => a.price - b.price);
-
-      // Limit to top 100 entries
-      const limitedBids = bids.slice(0, 100);
-      const limitedAsks = asks.slice(0, 100);
-
-      this.notifyOrderBookUpdate({
-        bids: limitedBids,
-        asks: limitedAsks,
-        timestamp: Date.now()
-      });
-    } catch (error) {
-      this.notifyError(error as Error, 'parsing');
-    }
-  }
-}
-
-class KrakenExchange extends BaseExchange {
-  private ws: WebSocket | null = null;
-  private readonly baseUrl = 'wss://ws.kraken.com';
-  private pingInterval: NodeJS.Timeout | null = null;
-  private bidsMap: Map<number, number> = new Map();
-  private asksMap: Map<number, number> = new Map();
-  private config: any;
-
-  constructor(config: any = {}) {
-    super();
-    this.config = config;
-  }
-
-  async connect(): Promise<void> {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      return;
-    }
-
-    const now = Date.now();
-    if (now - this.lastConnectionAttempt < this.minConnectionInterval) {
-      return;
-    }
-
-    this.lastConnectionAttempt = now;
-    this.status = 'connecting';
-
-    try {
-      this.ws = new WebSocket(this.baseUrl);
-
-      this.ws.onopen = () => {
-        console.log(`[${this.constructor.name}] WebSocket connected`);
-        this.notifyConnect();
-        if (this.symbol) {
-          this.subscribe(this.symbol);
-        }
-        this.pingInterval = setInterval(() => {
-          if (this.ws?.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({ event: 'ping' }));
-          }
-        }, 30000);
-      };
-
-      this.ws.onclose = () => {
-        console.log(`[${this.constructor.name}] WebSocket closed`);
-        this.notifyDisconnect();
-        if (this.pingInterval) {
-          clearInterval(this.pingInterval);
-          this.pingInterval = null;
-        }
-        this.ws = null;
-        this.reconnect();
-      };
-
-      this.ws.onerror = (event) => {
-        console.error(`[${this.constructor.name}] WebSocket error:`, event);
-        this.notifyError(new Error('WebSocket error'), 'connection');
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.event === 'subscriptionStatus' && data.status === 'error') {
-            this.notifyError(new Error(data.errorMessage || 'Subscription error'), 'api');
-            return;
-          }
-          this.processMessage(data);
-        } catch (error) {
-          this.notifyError(error as Error, 'data');
-        }
-      };
-    } catch (error) {
-      this.notifyError(error as Error, 'network');
-      this.reconnect();
-    }
-  }
-
-  disconnect(): void {
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-      this.pingInterval = null;
-    }
+    this.cleanup();
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
-    this.status = 'disconnected';
+
+    this.reconnectAttempts++;
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    
+    console.log(`[KRAKEN] Attempting to reconnect in ${delay}ms...`);
+    setTimeout(() => {
+      this.connect().catch(error => {
+        console.error('[KRAKEN] Reconnect failed:', error);
+        this.notifyError('Reconnect failed', 'network');
+      });
+    }, delay);
   }
 
   subscribe(symbol: string): void {
+    if (!symbol) {
+      console.error('[KRAKEN] Cannot subscribe: No symbol provided');
+      return;
+    }
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('[KRAKEN] Cannot subscribe: WebSocket not connected');
+      return;
+    }
+
     this.symbol = symbol;
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    const krakenSymbol = this.convertSymbol(symbol);
+    
       try {
         const subscribeMsg = {
           event: 'subscribe',
-          pair: [symbol],
-          subscription: { name: 'book', depth: 100 }
+        pair: [krakenSymbol],
+        subscription: {
+          name: 'book',
+          depth: 100
+        }
         };
         this.ws.send(JSON.stringify(subscribeMsg));
+      console.log(`[KRAKEN] Subscribed to ${krakenSymbol}`);
       } catch (error) {
-        this.notifyError(error as Error, 'api');
-      }
+      console.error('[KRAKEN] Error subscribing:', error);
+      this.notifyError('Failed to subscribe', 'subscription');
     }
   }
 
   unsubscribe(symbol: string): void {
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    if (!symbol) {
+      console.error('[KRAKEN] Cannot unsubscribe: No symbol provided');
+      return;
+    }
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const krakenSymbol = this.convertSymbol(symbol);
+    
       try {
         const unsubscribeMsg = {
           event: 'unsubscribe',
-          pair: [symbol],
-          subscription: { name: 'book', depth: 100 }
+        pair: [krakenSymbol],
+        subscription: {
+          name: 'book'
+        }
         };
         this.ws.send(JSON.stringify(unsubscribeMsg));
+      console.log(`[KRAKEN] Unsubscribed from ${krakenSymbol}`);
       } catch (error) {
-        this.notifyError(error as Error, 'api');
-      }
+      console.error('[KRAKEN] Error unsubscribing:', error);
+      this.notifyError('Failed to unsubscribe', 'subscription');
     }
   }
 
-  private processMessage(data: any) {
-    if (Array.isArray(data) && data.length > 1) {
-      const payload = data[1];
-      if (payload.bs || payload.as) {
-        this.bidsMap.clear();
-        this.asksMap.clear();
-        payload.bs?.forEach(([price, qty]: [string, string]) => {
-          const p = parseFloat(price);
-          const q = parseFloat(qty);
-          if (!isNaN(p) && !isNaN(q)) {
-            this.bidsMap.set(p, q);
-          }
-        });
-        payload.as?.forEach(([price, qty]: [string, string]) => {
-          const p = parseFloat(price);
-          const q = parseFloat(qty);
-          if (!isNaN(p) && !isNaN(q)) {
-            this.asksMap.set(p, q);
-          }
-        });
-      } else if (payload.b || payload.a) {
-        payload.b?.forEach(([price, qty]: [string, string]) => {
-          const p = parseFloat(price);
-          const q = parseFloat(qty);
-          if (!isNaN(p)) {
-            if (q === 0) {
-              this.bidsMap.delete(p);
-            } else if (!isNaN(q)) {
-              this.bidsMap.set(p, q);
-            }
-          }
-        });
-        payload.a?.forEach(([price, qty]: [string, string]) => {
-          const p = parseFloat(price);
-          const q = parseFloat(qty);
-          if (!isNaN(p)) {
-            if (q === 0) {
-              this.asksMap.delete(p);
-            } else if (!isNaN(q)) {
-              this.asksMap.set(p, q);
-            }
-          }
-        });
-      } else {
+  private processMessage(data: any): void {
+    if (!data) return;
+
+    // Handle ping/pong
+    if (data.event === 'pong') {
+      this.lastPingTime = Date.now();
+      return;
+    }
+
+    // Handle error messages
+    if (data.event === 'error') {
+      console.error('[KRAKEN] API error:', data);
+      this.notifyError(data.errorMessage || 'API error', 'api');
+      return;
+    }
+
+    // Handle subscription confirmation
+    if (data.event === 'subscriptionStatus') {
+      if (data.status === 'error') {
+        console.error('[KRAKEN] Subscription error:', data);
+        this.notifyError(data.errorMessage || 'Subscription error', 'subscription');
+      }
         return;
       }
 
-      const bids = Array.from(this.bidsMap.entries()).map(([price, quantity]) => ({
-        price,
-        quantity,
-        exchanges: ['KRAKEN'],
-        exchangeQuantities: { KRAKEN: quantity },
-        totalQuantity: quantity
-      })).sort((a, b) => b.price - a.price).slice(0, 100);
+    // Handle orderbook updates
+    if (Array.isArray(data) && data.length >= 2) {
+      const [channelId, bookData] = data;
+      
+      if (!bookData || !bookData.bids || !bookData.asks) return;
 
-      const asks = Array.from(this.asksMap.entries()).map(([price, quantity]) => ({
-        price,
-        quantity,
-        exchanges: ['KRAKEN'],
-        exchangeQuantities: { KRAKEN: quantity },
-        totalQuantity: quantity
-      })).sort((a, b) => a.price - b.price).slice(0, 100);
-
-      this.notifyOrderBookUpdate({
-        bids,
-        asks,
+      const orderBook: OrderBookData = {
+        bids: bookData.bids.map(([price, quantity]: [string, string]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity),
+          exchanges: ['KRAKEN'],
+          exchangeQuantities: { 'KRAKEN': parseFloat(quantity) }
+        })),
+        asks: bookData.asks.map(([price, quantity]: [string, string]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity),
+          exchanges: ['KRAKEN'],
+          exchangeQuantities: { 'KRAKEN': parseFloat(quantity) }
+        })),
         timestamp: Date.now()
-      });
+      };
+
+      this.notifyOrderBookUpdate(orderBook);
     }
   }
 }
 
 class PhemexExchange extends BaseExchange {
   private ws: WebSocket | null = null;
-  private readonly baseUrl = 'wss://phemex.com/ws';
-  private pingInterval: NodeJS.Timeout | null = null;
+  private readonly baseUrl = 'wss://ws.phemex.com/ws';
   private config: any;
+  private pingInterval: NodeJS.Timeout | null = null;
+  private lastPingTime: number = 0;
+  private readonly pingIntervalMs = 20000;
+  private readonly pingTimeoutMs = 10000;
+  protected reconnectAttempts = 0;
+  protected readonly maxReconnectAttempts = 10;
+  protected readonly reconnectDelay = 2000;
+  private isConnecting = false;
+  protected lastConnectionAttempt = 0;
+  protected readonly minConnectionInterval = 5000;
 
   constructor(config: any = {}) {
     super();
@@ -1122,144 +1262,251 @@ class PhemexExchange extends BaseExchange {
   }
 
   async connect(): Promise<void> {
+    if (this.status === 'connected' || this.isConnecting) {
+      return;
+    }
+
+    // Add delay between connection attempts
+    const now = Date.now();
+    const timeSinceLastAttempt = now - this.lastConnectionAttempt;
+    if (timeSinceLastAttempt < this.minConnectionInterval) {
+      await new Promise(resolve => setTimeout(resolve, this.minConnectionInterval - timeSinceLastAttempt));
+    }
+    this.lastConnectionAttempt = Date.now();
+
+    try {
+      this.isConnecting = true;
     this.status = 'connecting';
+
+      // Create WebSocket with error handling
     try {
       this.ws = new WebSocket(this.baseUrl);
+      } catch (error) {
+        console.error('[PHEMEX] Failed to create WebSocket:', error);
+        this.isConnecting = false;
+        this.notifyError('Failed to create WebSocket', 'network');
+        throw error;
+      }
+
       this.ws.onopen = () => {
-        this.status = 'connected';
-        this.errorHandler.resetBackoff(this.constructor.name);
+        console.log('[PHEMEX] WebSocket connected');
+        this.isConnecting = false;
+        this.reconnectAttempts = 0;
+        this.notifyConnect();
+        this.setupPingInterval();
+        
+        // Only subscribe if we have a symbol
         if (this.symbol) {
           this.subscribe(this.symbol);
         }
-        // Start ping interval
-        this.pingInterval = setInterval(() => {
-          if (this.ws?.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({ id: Date.now(), method: 'server.ping' }));
-          }
-        }, 30000);
       };
+
+      this.ws.onclose = (event) => {
+        console.log('[PHEMEX] WebSocket closed:', event.code, event.reason);
+        this.isConnecting = false;
+        this.cleanup();
+        this.notifyDisconnect();
+        this.handleReconnect(this.constructor.name);
+      };
+
+      this.ws.onerror = (error) => {
+        console.error('[PHEMEX] WebSocket error:', error);
+        this.isConnecting = false;
+        this.notifyError('WebSocket error', 'network');
+      };
+
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.method === 'server.pong') {
-            return;
-          }
           this.processMessage(data);
         } catch (error) {
-          this.notifyError(error as Error, 'data');
+          console.error('[PHEMEX] Error processing message:', error);
+          this.notifyError('Failed to process message', 'data');
         }
       };
-      this.ws.onerror = (event) => {
-        this.notifyError('WebSocket error', 'network');
-      };
-      this.ws.onclose = () => {
-        this.status = 'disconnected';
-        this.ws = null;
-        if (this.pingInterval) {
-          clearInterval(this.pingInterval);
-          this.pingInterval = null;
-        }
-      };
+
     } catch (error) {
-      this.notifyError(error as Error, 'network');
+      this.isConnecting = false;
+      console.error('[PHEMEX] Connection error:', error);
+      this.notifyError('Connection error', 'network');
+      throw error;
     }
   }
 
-  disconnect(): void {
+  private setupPingInterval() {
+        if (this.pingInterval) {
+          clearInterval(this.pingInterval);
+    }
+
+    this.pingInterval = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        const now = Date.now();
+        if (now - this.lastPingTime > this.pingTimeoutMs) {
+          console.log('[PHEMEX] Ping timeout, reconnecting...');
+          this.reconnect();
+          return;
+        }
+
+        try {
+          this.ws.send(JSON.stringify({ method: 'server.ping', params: [], id: Date.now() }));
+          this.lastPingTime = now;
+    } catch (error) {
+          console.error('[PHEMEX] Error sending ping:', error);
+          this.reconnect();
+    }
+      }
+    }, this.pingIntervalMs);
+  }
+
+  private cleanup() {
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
     }
+    this.lastPingTime = 0;
+    this.isConnecting = false;
+  }
+
+  disconnect(): void {
+    this.cleanup();
     if (this.ws) {
+      try {
       this.ws.close();
+      } catch (error) {
+        console.error('[PHEMEX] Error closing WebSocket:', error);
+      }
       this.ws = null;
     }
     this.status = 'disconnected';
   }
 
   reconnect(): void {
-    this.disconnect();
-    this.connect();
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('[PHEMEX] Max reconnect attempts reached');
+      this.notifyError('Max reconnect attempts reached', 'network');
+      // Reset reconnect attempts after a longer delay
+      setTimeout(() => {
+        this.reconnectAttempts = 0;
+        this.connect().catch(error => {
+          console.error('[PHEMEX] Reconnect failed:', error);
+          this.notifyError('Reconnect failed', 'network');
+        });
+      }, 30000); // Wait 30 seconds before trying again
+      return;
+    }
+
+    this.cleanup();
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch (error) {
+        console.error('[PHEMEX] Error closing WebSocket during reconnect:', error);
+      }
+      this.ws = null;
+    }
+
+    this.reconnectAttempts++;
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    
+    console.log(`[PHEMEX] Attempting to reconnect in ${delay}ms...`);
+    setTimeout(() => {
+      this.connect().catch(error => {
+        console.error('[PHEMEX] Reconnect failed:', error);
+        this.notifyError('Reconnect failed', 'network');
+      });
+    }, delay);
   }
 
   subscribe(symbol: string): void {
+    if (!symbol) {
+      console.error('[PHEMEX] Cannot subscribe: No symbol provided');
+      return;
+    }
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('[PHEMEX] Cannot subscribe: WebSocket not connected');
+      return;
+    }
+
     this.symbol = symbol;
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    
       try {
         const subscribeMsg = {
-          id: Date.now(),
           method: 'orderbook.subscribe',
-          params: [symbol, 100]
+        params: [symbol],
+        id: Date.now()
         };
         this.ws.send(JSON.stringify(subscribeMsg));
+      console.log(`[PHEMEX] Subscribed to ${symbol}`);
       } catch (error) {
-        this.notifyError(error as Error, 'api');
-      }
+      console.error('[PHEMEX] Error subscribing:', error);
+      this.notifyError('Failed to subscribe', 'subscription');
     }
   }
 
   unsubscribe(symbol: string): void {
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    if (!symbol) {
+      console.error('[PHEMEX] Cannot unsubscribe: No symbol provided');
+      return;
+    }
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
       try {
         const unsubscribeMsg = {
-          id: Date.now(),
           method: 'orderbook.unsubscribe',
-          params: [symbol]
+        params: [symbol],
+        id: Date.now()
         };
         this.ws.send(JSON.stringify(unsubscribeMsg));
+      console.log(`[PHEMEX] Unsubscribed from ${symbol}`);
       } catch (error) {
-        this.notifyError(error as Error, 'api');
-      }
+      console.error('[PHEMEX] Error unsubscribing:', error);
+      this.notifyError('Failed to unsubscribe', 'subscription');
     }
   }
 
   private processMessage(data: any): void {
-    if (data.type === 'snapshot' || data.type === 'incremental') {
-      try {
-        const bids = data.orderbook_p.bids.slice(0, 100).map(([price, quantity]: [string, string]) => {
-          const priceNum = parseFloat(price);
-          const quantityNum = parseFloat(quantity);
-          if (isNaN(priceNum) || isNaN(quantityNum)) {
-            throw new Error(`Invalid bid data: price=${price}, quantity=${quantity}`);
-          }
-          return {
-            price: priceNum,
-            quantity: quantityNum,
-            exchanges: ['PHEMEX'],
-            exchangeQuantities: { 'PHEMEX': quantityNum },
-            totalQuantity: quantityNum
-          };
-        });
+    if (!data) return;
 
-        const asks = data.orderbook_p.asks.slice(0, 100).map(([price, quantity]: [string, string]) => {
-          const priceNum = parseFloat(price);
-          const quantityNum = parseFloat(quantity);
-          if (isNaN(priceNum) || isNaN(quantityNum)) {
-            throw new Error(`Invalid ask data: price=${price}, quantity=${quantity}`);
-          }
-          return {
-            price: priceNum,
-            quantity: quantityNum,
-            exchanges: ['PHEMEX'],
-            exchangeQuantities: { 'PHEMEX': quantityNum },
-            totalQuantity: quantityNum
-          };
-        });
+    // Handle ping/pong
+    if (data.method === 'server.pong') {
+      this.lastPingTime = Date.now();
+      return;
+    }
 
-        // Sort bids in descending order and asks in ascending order
-        bids.sort((a, b) => b.price - a.price);
-        asks.sort((a, b) => a.price - b.price);
+    // Handle error messages
+    if (data.error) {
+      console.error('[PHEMEX] API error:', data.error);
+      this.notifyError(data.error.message || 'API error', 'api');
+      return;
+    }
 
-        this.latestOrderBook = {
-          bids,
-          asks,
+    // Handle orderbook updates
+    if (data.type === 'incremental' || data.type === 'snapshot') {
+      const { symbol, book } = data;
+      
+      if (!symbol || !book) return;
+
+      const orderBook: OrderBookData = {
+        bids: (book.bids || []).map(([price, quantity]: [string, string]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity),
+          exchanges: ['PHEMEX'],
+          exchangeQuantities: { 'PHEMEX': parseFloat(quantity) }
+        })),
+        asks: (book.asks || []).map(([price, quantity]: [string, string]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity),
+          exchanges: ['PHEMEX'],
+          exchangeQuantities: { 'PHEMEX': parseFloat(quantity) }
+        })),
           timestamp: Date.now()
         };
 
-        this.orderBookCallbacks.forEach(cb => cb(this.latestOrderBook!));
-      } catch (error) {
-        this.notifyError(error as Error, 'data');
-      }
+      this.notifyOrderBookUpdate(orderBook);
     }
   }
 }
@@ -1382,7 +1629,7 @@ class PoloniexExchange extends BaseExchange {
             price: priceNum,
             quantity: quantityNum,
             exchanges: ['POLONIEX'],
-            exchangeQuantities: { 'POLONIEX': quantityNum },
+            exchangeQuantities: { 'POLONIEX': parseFloat(quantity) },
             totalQuantity: quantityNum
           };
         });
@@ -1397,7 +1644,7 @@ class PoloniexExchange extends BaseExchange {
             price: priceNum,
             quantity: quantityNum,
             exchanges: ['POLONIEX'],
-            exchangeQuantities: { 'POLONIEX': quantityNum },
+            exchangeQuantities: { 'POLONIEX': parseFloat(quantity) },
             totalQuantity: quantityNum
           };
         });
@@ -1422,8 +1669,15 @@ class PoloniexExchange extends BaseExchange {
 
 class HitbtcExchange extends BaseExchange {
   private ws: WebSocket | null = null;
+  private readonly baseUrl = 'wss://api.hitbtc.com/api/3/ws/public';
   private config: any;
   private pingInterval: NodeJS.Timeout | null = null;
+  private lastPingTime: number = 0;
+  private readonly pingIntervalMs = 20020;
+  private readonly pingTimeoutMs = 10000;
+  protected reconnectAttempts = 0;
+  protected readonly maxReconnectAttempts = 5;
+  protected readonly reconnectDelay = 2000;
 
   constructor(config: any = {}) {
     super();
@@ -1431,74 +1685,88 @@ class HitbtcExchange extends BaseExchange {
   }
 
   async connect(): Promise<void> {
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    if (this.status === 'connected' || this.status === 'connecting') {
       return;
     }
-
-    const now = Date.now();
-    if (now - this.lastConnectionAttempt < this.minConnectionInterval) {
-      return;
-    }
-
-    this.lastConnectionAttempt = now;
-    this.status = 'connecting';
 
     try {
-      this.ws = new WebSocket('wss://api.hitbtc.com/api/3/ws');
+    this.status = 'connecting';
+      this.ws = new WebSocket(this.baseUrl);
       
       this.ws.onopen = () => {
-        console.log(`[${this.constructor.name}] WebSocket connected`);
+        console.log('[HITBTC] WebSocket connected');
+        this.reconnectAttempts = 0;
         this.notifyConnect();
+        this.setupPingInterval();
         if (this.symbol) {
           this.subscribe(this.symbol);
         }
-        // Start ping interval
-        this.pingInterval = setInterval(() => {
-          if (this.ws?.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({ method: 'ping' }));
-          }
-        }, 30000);
       };
 
       this.ws.onclose = () => {
-        console.log(`[${this.constructor.name}] WebSocket closed`);
+        console.log('[HITBTC] WebSocket closed');
+        this.cleanup();
         this.notifyDisconnect();
-        if (this.pingInterval) {
-          clearInterval(this.pingInterval);
-          this.pingInterval = null;
-        }
-        this.ws = null;
-        this.reconnect();
+        this.handleReconnect(this.constructor.name);
       };
 
-      this.ws.onerror = (event) => {
-        console.error(`[${this.constructor.name}] WebSocket error:`, event);
-        this.notifyError(new Error('WebSocket error'), 'connection');
+      this.ws.onerror = (error) => {
+        console.error('[HITBTC] WebSocket error:', error);
+        this.notifyError('WebSocket error', 'network');
       };
 
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.error) {
-            this.notifyError(new Error(data.error.message || 'API error'), 'api');
-            return;
-          }
           this.processMessage(data);
         } catch (error) {
-          this.notifyError(error as Error, 'data');
+          console.error('[HITBTC] Error processing message:', error);
+          this.notifyError('Failed to process message', 'data');
         }
       };
+
     } catch (error) {
-      this.notifyError(error as Error, 'network');
-      this.reconnect();
+      console.error('[HITBTC] Connection error:', error);
+      this.notifyError('Connection error', 'network');
+      throw error;
     }
   }
 
-  disconnect(): void {
+  private setupPingInterval() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+    }
+
+    this.pingInterval = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        const now = Date.now();
+        if (now - this.lastPingTime > this.pingTimeoutMs) {
+          console.log('[HITBTC] Ping timeout, reconnecting...');
+      this.reconnect();
+          return;
+        }
+
+        try {
+          this.ws.send(JSON.stringify({ method: 'ping' }));
+          this.lastPingTime = now;
+        } catch (error) {
+          console.error('[HITBTC] Error sending ping:', error);
+          this.reconnect();
+        }
+      }
+    }, this.pingIntervalMs);
+  }
+
+  private cleanup() {
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
     }
+    this.lastPingTime = 0;
+  }
+
+  disconnect(): void {
+    this.cleanup();
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -1506,95 +1774,113 @@ class HitbtcExchange extends BaseExchange {
     this.status = 'disconnected';
   }
 
+  reconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('[HITBTC] Max reconnect attempts reached');
+      this.notifyError('Max reconnect attempts reached', 'network');
+      return;
+    }
+
+    this.cleanup();
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+
+    this.reconnectAttempts++;
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    
+    console.log(`[HITBTC] Attempting to reconnect in ${delay}ms...`);
+    setTimeout(() => {
+      this.connect().catch(error => {
+        console.error('[HITBTC] Reconnect failed:', error);
+        this.notifyError('Reconnect failed', 'network');
+      });
+    }, delay);
+  }
+
   subscribe(symbol: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('[HITBTC] Cannot subscribe: WebSocket not connected');
+      return;
+    }
+
     this.symbol = symbol;
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    const normalizedSymbol = symbol.replace('USDT', 'USD');
+    
       try {
         const subscribeMsg = {
           method: 'subscribe',
           params: {
-            channels: [`orderbook.${symbol.toLowerCase()}.100`]
+          channel: 'orderbook',
+          symbol: normalizedSymbol
           },
           id: Date.now()
         };
         this.ws.send(JSON.stringify(subscribeMsg));
       } catch (error) {
-        this.notifyError(error as Error, 'api');
-      }
+      console.error('[HITBTC] Error subscribing:', error);
+      this.notifyError('Failed to subscribe', 'subscription');
     }
   }
 
   unsubscribe(symbol: string): void {
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const normalizedSymbol = symbol.replace('USDT', 'USD');
+    
       try {
         const unsubscribeMsg = {
           method: 'unsubscribe',
           params: {
-            channels: [`orderbook.${symbol.toLowerCase()}.100`]
+          channel: 'orderbook',
+          symbol: normalizedSymbol
           },
           id: Date.now()
         };
         this.ws.send(JSON.stringify(unsubscribeMsg));
       } catch (error) {
-        this.notifyError(error as Error, 'api');
-      }
+      console.error('[HITBTC] Error unsubscribing:', error);
+      this.notifyError('Failed to unsubscribe', 'subscription');
     }
   }
 
-  private processMessage(data: any) {
-    if (!data || !data.params || !data.params.data) {
-      return;
-    }
+  private processMessage(data: any): void {
+    if (!data) return;
 
-    try {
-      const orderBook = data.params.data;
-      if (!orderBook.bid || !orderBook.ask) {
+    // Handle ping/pong
+    if (data.method === 'pong') {
+      this.lastPingTime = Date.now();
         return;
       }
 
-      const bids = orderBook.bid.map(([price, quantity]: [string, string]) => {
-        const priceNum = parseFloat(price);
-        const quantityNum = parseFloat(quantity);
-        if (isNaN(priceNum) || isNaN(quantityNum)) {
-          throw new Error(`Invalid bid data: price=${price}, quantity=${quantity}`);
-        }
-        return {
-          price: priceNum,
-          quantity: quantityNum,
+    // Handle orderbook updates
+    if (data.method === 'snapshot' || data.method === 'update') {
+      const { params } = data;
+      if (!params || !params.data) return;
+
+      const { bid, ask } = params.data;
+      if (!bid && !ask) return;
+
+      const orderBook: OrderBookData = {
+        bids: (bid || []).map(([price, quantity]: [string, string]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity),
           exchanges: ['HITBTC'],
-          exchangeQuantities: { 'HITBTC': quantityNum },
-          totalQuantity: quantityNum
-        };
-      });
-
-      const asks = orderBook.ask.map(([price, quantity]: [string, string]) => {
-        const priceNum = parseFloat(price);
-        const quantityNum = parseFloat(quantity);
-        if (isNaN(priceNum) || isNaN(quantityNum)) {
-          throw new Error(`Invalid ask data: price=${price}, quantity=${quantity}`);
-        }
-        return {
-          price: priceNum,
-          quantity: quantityNum,
+          exchangeQuantities: { 'HITBTC': parseFloat(quantity) }
+        })),
+        asks: (ask || []).map(([price, quantity]: [string, string]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity),
           exchanges: ['HITBTC'],
-          exchangeQuantities: { 'HITBTC': quantityNum },
-          totalQuantity: quantityNum
-        };
-      });
-
-      // Sort bids in descending order and asks in ascending order
-      bids.sort((a, b) => b.price - a.price);
-      asks.sort((a, b) => a.price - b.price);
-
-      this.latestOrderBook = {
-        bids,
-        asks,
+          exchangeQuantities: { 'HITBTC': parseFloat(quantity) }
+        })),
         timestamp: Date.now()
       };
 
-      this.orderBookCallbacks.forEach(cb => cb(this.latestOrderBook!));
-    } catch (error) {
-      this.notifyError(error as Error, 'data');
+      this.notifyOrderBookUpdate(orderBook);
     }
   }
 }
@@ -1659,9 +1945,271 @@ class CryptocomExchangeStub extends BasicWsExchange {
   }
 }
 
-class DeribitExchangeStub extends BasicWsExchange {
-  constructor() {
-    super('wss://www.deribit.com/ws/api/v2');
+class DeribitExchangeStub extends BaseExchange {
+  private ws: WebSocket | null = null;
+  private readonly baseUrl = 'wss://www.deribit.com/ws/api/v2';
+  private config: any;
+  private pingInterval: NodeJS.Timeout | null = null;
+  private lastPingTime: number = 0;
+  private readonly pingIntervalMs = 20000;
+  private readonly pingTimeoutMs = 10000;
+  protected reconnectAttempts = 0;
+  protected readonly maxReconnectAttempts = 10;
+  protected readonly reconnectDelay = 2000;
+  private isConnecting = false;
+  protected lastConnectionAttempt = 0;
+  protected readonly minConnectionInterval = 5000;
+
+  constructor(config: any = {}) {
+    super();
+    this.config = config;
+  }
+
+  async connect(): Promise<void> {
+    if (this.status === 'connected' || this.isConnecting) {
+      return;
+    }
+
+    // Add delay between connection attempts
+    const now = Date.now();
+    const timeSinceLastAttempt = now - this.lastConnectionAttempt;
+    if (timeSinceLastAttempt < this.minConnectionInterval) {
+      await new Promise(resolve => setTimeout(resolve, this.minConnectionInterval - timeSinceLastAttempt));
+    }
+    this.lastConnectionAttempt = Date.now();
+
+    try {
+      this.isConnecting = true;
+      this.status = 'connecting';
+      this.ws = new WebSocket(this.baseUrl);
+
+      this.ws.onopen = () => {
+        console.log('[DERIBIT] WebSocket connected');
+        this.isConnecting = false;
+        this.reconnectAttempts = 0;
+        this.notifyConnect();
+        this.setupPingInterval();
+        
+        // Only subscribe if we have a symbol
+        if (this.symbol) {
+          this.subscribe(this.symbol);
+        }
+      };
+
+      this.ws.onclose = () => {
+        console.log('[DERIBIT] WebSocket closed');
+        this.isConnecting = false;
+        this.cleanup();
+        this.notifyDisconnect();
+        this.handleReconnect(this.constructor.name);
+      };
+
+      this.ws.onerror = (error) => {
+        console.error('[DERIBIT] WebSocket error:', error);
+        this.isConnecting = false;
+        this.notifyError('WebSocket error', 'network');
+      };
+
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.processMessage(data);
+        } catch (error) {
+          console.error('[DERIBIT] Error processing message:', error);
+          this.notifyError('Failed to process message', 'data');
+        }
+      };
+
+    } catch (error) {
+      this.isConnecting = false;
+      console.error('[DERIBIT] Connection error:', error);
+      this.notifyError('Connection error', 'network');
+      throw error;
+    }
+  }
+
+  private setupPingInterval() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+    }
+
+    this.pingInterval = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        const now = Date.now();
+        if (now - this.lastPingTime > this.pingTimeoutMs) {
+          console.log('[DERIBIT] Ping timeout, reconnecting...');
+          this.reconnect();
+          return;
+        }
+
+        try {
+          const pingMsg = {
+            jsonrpc: '2.0',
+            id: Date.now(),
+            method: 'public/test',
+            params: {}
+          };
+          this.ws.send(JSON.stringify(pingMsg));
+          this.lastPingTime = now;
+        } catch (error) {
+          console.error('[DERIBIT] Error sending ping:', error);
+          this.reconnect();
+        }
+      }
+    }, this.pingIntervalMs);
+  }
+
+  private cleanup() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+    this.lastPingTime = 0;
+    this.isConnecting = false;
+  }
+
+  disconnect(): void {
+    this.cleanup();
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.status = 'disconnected';
+  }
+
+  reconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('[DERIBIT] Max reconnect attempts reached');
+      this.notifyError('Max reconnect attempts reached', 'network');
+      // Reset reconnect attempts after a longer delay
+      setTimeout(() => {
+        this.reconnectAttempts = 0;
+        this.connect().catch(error => {
+          console.error('[DERIBIT] Reconnect failed:', error);
+          this.notifyError('Reconnect failed', 'network');
+        });
+      }, 30000); // Wait 30 seconds before trying again
+      return;
+    }
+
+    this.cleanup();
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+
+    this.reconnectAttempts++;
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    
+    console.log(`[DERIBIT] Attempting to reconnect in ${delay}ms...`);
+    setTimeout(() => {
+      this.connect().catch(error => {
+        console.error('[DERIBIT] Reconnect failed:', error);
+        this.notifyError('Reconnect failed', 'network');
+      });
+    }, delay);
+  }
+
+  subscribe(symbol: string): void {
+    if (!symbol) {
+      console.error('[DERIBIT] Cannot subscribe: No symbol provided');
+      return;
+    }
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('[DERIBIT] Cannot subscribe: WebSocket not connected');
+      return;
+    }
+
+    this.symbol = symbol;
+    const normalizedSymbol = symbol.replace('USDT', 'USD');
+    
+    try {
+      const subscribeMsg = {
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method: 'public/subscribe',
+        params: {
+          channels: [`book.${normalizedSymbol}.100ms`]
+        }
+      };
+      this.ws.send(JSON.stringify(subscribeMsg));
+      console.log(`[DERIBIT] Subscribed to ${normalizedSymbol}`);
+    } catch (error) {
+      console.error('[DERIBIT] Error subscribing:', error);
+      this.notifyError('Failed to subscribe', 'subscription');
+    }
+  }
+
+  unsubscribe(symbol: string): void {
+    if (!symbol) {
+      console.error('[DERIBIT] Cannot unsubscribe: No symbol provided');
+      return;
+    }
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const normalizedSymbol = symbol.replace('USDT', 'USD');
+    
+    try {
+      const unsubscribeMsg = {
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method: 'public/unsubscribe',
+        params: {
+          channels: [`book.${normalizedSymbol}.100ms`]
+        }
+      };
+      this.ws.send(JSON.stringify(unsubscribeMsg));
+      console.log(`[DERIBIT] Unsubscribed from ${normalizedSymbol}`);
+    } catch (error) {
+      console.error('[DERIBIT] Error unsubscribing:', error);
+      this.notifyError('Failed to unsubscribe', 'subscription');
+    }
+  }
+
+  private processMessage(data: any): void {
+    if (!data) return;
+
+    // Handle ping/pong
+    if (data.method === 'public/test') {
+      this.lastPingTime = Date.now();
+      return;
+    }
+
+    // Handle error messages
+    if (data.error) {
+      console.error('[DERIBIT] API error:', data.error);
+      this.notifyError(data.error.message || 'API error', 'api');
+      return;
+    }
+
+    // Handle orderbook updates
+    if (data.method === 'subscription' && data.params?.channel?.startsWith('book.')) {
+      const { data: bookData } = data.params;
+      
+      if (!bookData) return;
+
+      const orderBook: OrderBookData = {
+        bids: (bookData.bids || []).map(([price, quantity]: [string, string]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity),
+          exchanges: ['DERIBIT'],
+          exchangeQuantities: { 'DERIBIT': parseFloat(quantity) }
+        })),
+        asks: (bookData.asks || []).map(([price, quantity]: [string, string]) => ({
+          price: parseFloat(price),
+          quantity: parseFloat(quantity),
+          exchanges: ['DERIBIT'],
+          exchangeQuantities: { 'DERIBIT': parseFloat(quantity) }
+        })),
+        timestamp: Date.now()
+      };
+
+      this.notifyOrderBookUpdate(orderBook);
+    }
   }
 }
 
@@ -1677,9 +2225,263 @@ class GateioExchangeStub extends BasicWsExchange {
   }
 }
 
-class HuobiExchangeStub extends BasicWsExchange {
-  constructor() {
-    super('wss://api.hbdm.com/swap-ws');
+class HuobiExchangeStub extends BaseExchange {
+  private ws: WebSocket | null = null;
+  private readonly baseUrl = 'wss://api.huobi.pro/ws';
+  private config: any;
+  private pingInterval: NodeJS.Timeout | null = null;
+  private lastPingTime: number = 0;
+  private readonly pingIntervalMs = 20000;
+  private readonly pingTimeoutMs = 10000;
+  protected reconnectAttempts = 0;
+  protected readonly maxReconnectAttempts = 10;
+  protected readonly reconnectDelay = 2000;
+  private isConnecting = false;
+  protected lastConnectionAttempt = 0;
+  protected readonly minConnectionInterval = 5000;
+
+  constructor(config: any = {}) {
+    super();
+    this.config = config;
+  }
+
+  private convertSymbol(symbol: string): string {
+    // Convert BTCUSDT to btcusdt for Huobi
+    return symbol.toLowerCase();
+  }
+
+  async connect(): Promise<void> {
+    if (this.status === 'connected' || this.isConnecting) {
+      return;
+    }
+
+    // Add delay between connection attempts
+    const now = Date.now();
+    const timeSinceLastAttempt = now - this.lastConnectionAttempt;
+    if (timeSinceLastAttempt < this.minConnectionInterval) {
+      await new Promise(resolve => setTimeout(resolve, this.minConnectionInterval - timeSinceLastAttempt));
+    }
+    this.lastConnectionAttempt = Date.now();
+
+    try {
+      this.isConnecting = true;
+      this.status = 'connecting';
+      this.ws = new WebSocket(this.baseUrl);
+
+      this.ws.onopen = () => {
+        console.log('[HUOBI] WebSocket connected');
+        this.isConnecting = false;
+        this.reconnectAttempts = 0;
+        this.notifyConnect();
+        this.setupPingInterval();
+        
+        // Only subscribe if we have a symbol
+        if (this.symbol) {
+          this.subscribe(this.symbol);
+        }
+      };
+
+      this.ws.onclose = () => {
+        console.log('[HUOBI] WebSocket closed');
+        this.isConnecting = false;
+        this.cleanup();
+        this.notifyDisconnect();
+        this.handleReconnect(this.constructor.name);
+      };
+
+      this.ws.onerror = (error) => {
+        console.error('[HUOBI] WebSocket error:', error);
+        this.isConnecting = false;
+        this.notifyError('WebSocket error', 'network');
+      };
+
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.processMessage(data);
+        } catch (error) {
+          console.error('[HUOBI] Error processing message:', error);
+          this.notifyError('Failed to process message', 'data');
+        }
+      };
+
+    } catch (error) {
+      this.isConnecting = false;
+      console.error('[HUOBI] Connection error:', error);
+      this.notifyError('Connection error', 'network');
+      throw error;
+    }
+  }
+
+  private setupPingInterval() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+    }
+
+    this.pingInterval = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        const now = Date.now();
+        if (now - this.lastPingTime > this.pingTimeoutMs) {
+          console.log('[HUOBI] Ping timeout, reconnecting...');
+          this.reconnect();
+          return;
+        }
+
+        try {
+          this.ws.send(JSON.stringify({ ping: Date.now() }));
+          this.lastPingTime = now;
+        } catch (error) {
+          console.error('[HUOBI] Error sending ping:', error);
+          this.reconnect();
+        }
+      }
+    }, this.pingIntervalMs);
+  }
+
+  private cleanup() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+    this.lastPingTime = 0;
+    this.isConnecting = false;
+  }
+
+  disconnect(): void {
+    this.cleanup();
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.status = 'disconnected';
+  }
+
+  reconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('[HUOBI] Max reconnect attempts reached');
+      this.notifyError('Max reconnect attempts reached', 'network');
+      // Reset reconnect attempts after a longer delay
+      setTimeout(() => {
+        this.reconnectAttempts = 0;
+        this.connect().catch(error => {
+          console.error('[HUOBI] Reconnect failed:', error);
+          this.notifyError('Reconnect failed', 'network');
+        });
+      }, 30000); // Wait 30 seconds before trying again
+      return;
+    }
+
+    this.cleanup();
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+
+    this.reconnectAttempts++;
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    
+    console.log(`[HUOBI] Attempting to reconnect in ${delay}ms...`);
+    setTimeout(() => {
+      this.connect().catch(error => {
+        console.error('[HUOBI] Reconnect failed:', error);
+        this.notifyError('Reconnect failed', 'network');
+      });
+    }, delay);
+  }
+
+  subscribe(symbol: string): void {
+    if (!symbol) {
+      console.error('[HUOBI] Cannot subscribe: No symbol provided');
+      return;
+    }
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('[HUOBI] Cannot subscribe: WebSocket not connected');
+      return;
+    }
+
+    this.symbol = symbol;
+    const huobiSymbol = this.convertSymbol(symbol);
+    
+    try {
+      const subscribeMsg = {
+        sub: `market.${huobiSymbol}.depth.step0`,
+        id: Date.now()
+      };
+      this.ws.send(JSON.stringify(subscribeMsg));
+      console.log(`[HUOBI] Subscribed to ${huobiSymbol}`);
+    } catch (error) {
+      console.error('[HUOBI] Error subscribing:', error);
+      this.notifyError('Failed to subscribe', 'subscription');
+    }
+  }
+
+  unsubscribe(symbol: string): void {
+    if (!symbol) {
+      console.error('[HUOBI] Cannot unsubscribe: No symbol provided');
+      return;
+    }
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const huobiSymbol = this.convertSymbol(symbol);
+    
+    try {
+      const unsubscribeMsg = {
+        unsub: `market.${huobiSymbol}.depth.step0`,
+        id: Date.now()
+      };
+      this.ws.send(JSON.stringify(unsubscribeMsg));
+      console.log(`[HUOBI] Unsubscribed from ${huobiSymbol}`);
+    } catch (error) {
+      console.error('[HUOBI] Error unsubscribing:', error);
+      this.notifyError('Failed to unsubscribe', 'subscription');
+    }
+  }
+
+  private processMessage(data: any): void {
+    if (!data) return;
+
+    // Handle ping/pong
+    if (data.ping) {
+      this.lastPingTime = Date.now();
+      this.ws?.send(JSON.stringify({ pong: data.ping }));
+      return;
+    }
+
+    // Handle error messages
+    if (data.err_code) {
+      console.error('[HUOBI] API error:', data);
+      this.notifyError(data.err_msg || 'API error', 'api');
+      return;
+    }
+
+    // Handle orderbook updates
+    if (data.ch?.startsWith('market.') && data.ch?.endsWith('.depth.step0')) {
+      const { tick } = data;
+      
+      if (!tick || !tick.bids || !tick.asks) return;
+
+      const orderBook: OrderBookData = {
+        bids: tick.bids.map(([price, quantity]: [number, number]) => ({
+          price,
+          quantity,
+          exchanges: ['HUOBI'],
+          exchangeQuantities: { 'HUOBI': quantity }
+        })),
+        asks: tick.asks.map(([price, quantity]: [number, number]) => ({
+          price,
+          quantity,
+          exchanges: ['HUOBI'],
+          exchangeQuantities: { 'HUOBI': quantity }
+        })),
+        timestamp: Date.now()
+      };
+
+      this.notifyOrderBookUpdate(orderBook);
+    }
   }
 }
 

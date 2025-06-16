@@ -7,25 +7,47 @@
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="AlphaDesk Terminal - Advanced Trading Platform"
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
-
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
     <title>AlphaDesk Terminal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://s3.tradingview.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data:;
+      connect-src 'self' 
+        wss://*.phemex.com 
+        wss://*.hitbtc.com 
+        wss://*.binance.com 
+        wss://*.bybit.com 
+        wss://*.kraken.com 
+        wss://*.coinbase.com 
+        wss://*.poloniex.com
+        wss://stream.binance.com:9443
+        wss://stream.binance.us:9443
+        wss://api-pub.bitfinex.com
+        wss://ws.bitget.com
+        wss://openapi-ws-v2.bitmart.com
+        wss://www.bitmex.com
+        wss://ws.bitstamp.net
+        wss://fapi.bitunix.com
+        wss://stream.crypto.com
+        wss://www.deribit.com
+        wss://api.dydx.exchange
+        wss://ws.gate.io
+        wss://api.huobi.pro
+        wss://ws-api.kucoin.com
+        wss://wbs.mexc.com
+        wss://ws.okx.com:8443;
+      frame-src 'self';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+    ">
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

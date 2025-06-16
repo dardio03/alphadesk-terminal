@@ -1,14 +1,20 @@
-export const formatPrice = (price: number, decimals: number = 2): string => {
+export const formatPrice = (price: number): string => {
+  if (!price) return '0';
+  
+  // Format with thousands separator and 2 decimal places
   return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(price);
 };
 
-export const formatQuantity = (quantity: number, decimals: number = 8): string => {
+export const formatQuantity = (quantity: number): string => {
+  if (!quantity) return '0';
+  
+  // Format with 2-3 decimal places, no scientific notation
   return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 3,
   }).format(quantity);
 };
 
