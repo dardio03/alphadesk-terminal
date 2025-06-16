@@ -10,32 +10,33 @@ A professional-grade cryptocurrency trading terminal built with React and TypeSc
 - **Price Range Analysis**: Visual representation of price ranges and market depth
 - **Responsive Layout**: Draggable and resizable widgets for customized workspace
 - **Multi-Exchange Support**:
-  - Bitmex
-  - Binance Futures
-  - Binance US
-  - Kraken
-  - Huobi
-  - Binance
-  - Bitfinex
-  - Bitstamp
-  - Coinbase
-  - HitBTC
-  - OKEx
-  - Poloniex
-  - Deribit
-  - Bybit
-  - Phemex
-  - dYdX
-  - Uniswap
-  - KuCoin
-  - Bitget
-  - Bitunix
-  - MEXC
-  - Gate.io
-  - Crypto.com
-  - Bitmart
+  - **Full order book, trade and ticker support:**
+    - Binance
+    - Bybit
+    - Coinbase
+    - Kraken
+    - Phemex
+    - Poloniex
+    - HitBTC
+  - **Additional connectors (order book coming soon):**
+    - Bitmex
+    - Binance Futures
+    - Binance US
+    - Huobi
+    - Bitfinex
+    - Bitstamp
+    - OKEx
+    - Deribit
+    - dYdX
+    - Uniswap
+    - KuCoin
+    - Bitget
+    - Bitunix
+    - MEXC
+    - Gate.io
+    - Crypto.com
+    - Bitmart
   - Exchange implementations live in [`src/aggr-worker/exchanges/`](src/aggr-worker/exchanges/). The in-app order book currently supports only the exchanges implemented in [`src/utils/ExchangeService.ts`](src/utils/ExchangeService.ts), and additional connectors are being added to provide complete coverage.
-
 ## Technology Stack
 
 - **Frontend**:
@@ -123,6 +124,12 @@ The terminal maintains WebSocket connections to many cryptocurrency exchanges.
 Each exchange has a dedicated module under `src/aggr-worker/exchanges/` that specifies its WebSocket URL.
 Refer to that directory for the full list of supported endpoints.
 Each connection includes automatic reconnection with exponential backoff and proper error handling.
+
+### Adding a New Exchange Connector
+
+1. Create a connector under `src/aggr-worker/exchanges/`. This file should handle WebSocket subscriptions for trades, tickers and order books. Existing files in that directory are good starting points.
+2. Register a corresponding class in `src/utils/ExchangeService.ts` via `ExchangeFactory`. This enables the UI to manage the connection and display the data.
+3. Add the exchange identifier to `src/constants/exchanges.ts` so it appears in the settings.
 
 ## Type Safety
 
