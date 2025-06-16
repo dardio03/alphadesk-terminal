@@ -19,8 +19,8 @@
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com;
       img-src 'self' data:;
-      connect-src 'self' 
-        wss://*.phemex.com 
+      connect-src 'self' https://s.tradingview.com
+        wss://*.phemex.com
         wss://*.hitbtc.com 
         wss://*.binance.com 
         wss://*.bybit.com 
@@ -43,7 +43,7 @@
         wss://ws-api.kucoin.com
         wss://wbs.mexc.com
         wss://ws.okx.com:8443;
-      frame-src 'self';
+      frame-src 'self' https://s.tradingview.com;
       object-src 'none';
       base-uri 'self';
       form-action 'self';
