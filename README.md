@@ -10,7 +10,7 @@ A professional-grade cryptocurrency trading terminal built with React and TypeSc
 - **Price Range Analysis**: Visual representation of price ranges and market depth
 - **Responsive Layout**: Draggable and resizable widgets for customized workspace
 - **Multi-Exchange Support**:
-  - **Full order book, trade and ticker support:**
+  - **Fully implemented connectors:**
     - Binance
     - Bybit
     - Coinbase
@@ -18,7 +18,7 @@ A professional-grade cryptocurrency trading terminal built with React and TypeSc
     - Phemex
     - Poloniex
     - HitBTC
-  - **Additional connectors (order book coming soon):**
+  - **Placeholder connectors (order book coming soon):**
     - Bitmex
     - Binance Futures
     - Binance US
@@ -36,7 +36,7 @@ A professional-grade cryptocurrency trading terminal built with React and TypeSc
     - Gate.io
     - Crypto.com
     - Bitmart
-  - Exchange implementations live in [`src/aggr-worker/exchanges/`](src/aggr-worker/exchanges/). The in-app order book currently supports only the exchanges implemented in [`src/utils/ExchangeService.ts`](src/utils/ExchangeService.ts), and additional connectors are being added to provide complete coverage.
+  - Exchange implementations live in [`src/aggr-worker/exchanges/`](src/aggr-worker/exchanges/). The in-app order book currently supports only the exchanges implemented in [`src/utils/ExchangeService.ts`](src/utils/ExchangeService.ts). Additional connectors reside in [`src/utils/exchanges/`](src/utils/exchanges/) and may not yet provide order-book data.
 ## Technology Stack
 
 - **Frontend**:
