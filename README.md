@@ -28,7 +28,7 @@ A professional-grade cryptocurrency trading terminal built with React and TypeSc
     - OKEx
     - Deribit
     - dYdX
-    - Uniswap
+    - Uniswap *(no order book; trades only via The Graph)*
     - KuCoin
     - Bitget
     - Bitunix
@@ -124,6 +124,8 @@ The terminal maintains WebSocket connections to many cryptocurrency exchanges.
 Each exchange has a dedicated module under `src/aggr-worker/exchanges/` that specifies its WebSocket URL.
 Refer to that directory for the full list of supported endpoints.
 Each connection includes automatic reconnection with exponential backoff and proper error handling.
+
+> **Note**: Uniswap is an automated market maker (AMM) and does not expose a real-time order-book WebSocket. The current connector only retrieves trades via The Graph API.
 
 ### Adding a New Exchange Connector
 
