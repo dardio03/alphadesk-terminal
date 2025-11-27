@@ -253,9 +253,6 @@ const App: React.FC = () => {
   const [currentLayout, setCurrentLayout] = useState<Layout[]>([]);
 
   const onLayoutChange = (current: Layout[], all: { [key: string]: Layout[] }) => {
-    console.log('Layout changed for breakpoint:', currentBreakpoint);
-    console.log('Current layout:', JSON.stringify(current, null, 2));
-    
     // Update the current layout
     setCurrentLayout(current);
     
@@ -276,10 +273,6 @@ const App: React.FC = () => {
       xxs: currentBreakpoint === 'xxs' ? currentLayout : (layouts.xxs || [])
     };
 
-    console.log('Current breakpoint:', currentBreakpoint);
-    console.log('Current layout:', JSON.stringify(currentLayout, null, 2));
-    console.log('Saving complete layout:', JSON.stringify(layoutToSave, null, 2));
-
     const newLayout: SavedLayout = {
       ...layout,
       data: {
@@ -294,8 +287,6 @@ const App: React.FC = () => {
   };
 
   const handleLoadLayout = (layout: SavedLayout) => {
-    console.log('Loading layout:', JSON.stringify(layout.data.layouts, null, 2));
-    
     // Ensure the loaded layout has all breakpoints with valid arrays
     const layoutToLoad = {
       lg: Array.isArray(layout.data.layouts.lg) ? layout.data.layouts.lg : defaultLayout.lg,
@@ -309,7 +300,6 @@ const App: React.FC = () => {
     setCurrentLayout(layoutToLoad[currentBreakpoint as keyof typeof layoutToLoad] || []);
 
     // Apply the new layout directly
-    console.log('Applying layout:', JSON.stringify(layoutToLoad, null, 2));
     setLayouts(layoutToLoad);
   };
 
@@ -320,8 +310,6 @@ const App: React.FC = () => {
   };
 
   const handleResetLayout = () => {
-    console.log('Resetting to default:', JSON.stringify(defaultLayout, null, 2));
-    
     // Update current layout based on current breakpoint
     setCurrentLayout(defaultLayout[currentBreakpoint as keyof typeof defaultLayout] || []);
     
@@ -333,7 +321,6 @@ const App: React.FC = () => {
       xs: defaultLayout.xs || [],
       xxs: defaultLayout.xxs || []
     };
-    console.log('Applying default layout:', JSON.stringify(layoutToApply, null, 2));
     setLayouts(layoutToApply);
   };
 
