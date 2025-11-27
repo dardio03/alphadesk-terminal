@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ExchangeId } from '../types/exchange';
-import './ExchangeSettings.css';
 import { EXCHANGES } from '../constants/exchanges';
 
 // Define available exchanges

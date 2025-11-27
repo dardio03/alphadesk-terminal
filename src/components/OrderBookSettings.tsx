@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { OrderBookSettingsProps, OrderBookSettings as Settings } from '../types/exchange';
-import './OrderBookSettings.css';
 
 const OrderBookSettings: React.FC<OrderBookSettingsProps> = ({
   onSettingsChange,

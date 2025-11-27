@@ -24,7 +24,31 @@ import { EXCHANGES } from './constants/exchanges';
 import { ExchangeId } from './types/exchange';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import './App.css';
+import { DefaultTheme } from 'styled-components';
+
+// Declare module for theme extension
+declare module 'styled-components' {
+  export interface DefaultTheme {
+    colors: {
+      background: {
+        default: string;
+        paper: string;
+      };
+      text: {
+        primary: string;
+      };
+      primary: {
+        main: string;
+      };
+      border: {
+        main: string;
+      };
+    };
+    radii: {
+      lg: string;
+    };
+  }
+}
 
 // Type for saved layouts
 interface SavedLayout {

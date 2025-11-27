@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { OrderBookEntry } from '../types/exchange';
 import { formatPrice, formatQuantity } from '../utils/formatPrice';
-import './OrderBookChanges.css';
 
 interface OrderBookChange extends OrderBookEntry {
   type: 'bid' | 'ask';

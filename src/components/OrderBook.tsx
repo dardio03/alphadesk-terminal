@@ -5,7 +5,15 @@ import { ExchangeId } from "../types/exchange";
 import { aggregatorService } from "../services/aggregatorService";
 import { ErrorContext } from '../utils/ErrorHandler';
 import { formatPrice, formatQuantity } from "../utils/formatPrice";
-import debounce from 'lodash/debounce';
+
+// Simple debounce implementation
+function debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
+  let timeout: NodeJS.Timeout | null = null;
+  return ((...args: any[]) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  }) as T;
+}
 
 interface AggregatedOrderBookEntry {
   price: number;

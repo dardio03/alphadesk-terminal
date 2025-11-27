@@ -1,5 +1,4 @@
 import { EventEmitter } from 'events';
-import BitfinexExchange from './exchanges/bitfinex';
 
 export interface ExchangeConnection {
   connect(): Promise<void>;
@@ -326,7 +325,7 @@ export abstract class BaseExchange extends EventEmitter implements ExchangeConne
 }
 
 class BasicWsExchange extends BaseExchange {
-  private ws: WebSocket | null = null;
+  protected ws: WebSocket | null = null;
   private readonly baseUrl: string;
   private pingInterval: NodeJS.Timeout | null = null;
   constructor(baseUrl: string) {
@@ -418,65 +417,25 @@ class BasicWsExchange extends BaseExchange {
     }
   }
 
-  subscribeTrades(symbol: string): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    const normalizedSymbol = symbol.replace('USDT', 'USD');
-    try {
-      const msg = {
-        method: 'subscribeTrades',
-        params: { symbol: normalizedSymbol },
-      };
-      this.ws.send(JSON.stringify(msg));
-    } catch (error) {
-      this.notifyError(error as Error, 'api');
-    }
+  subscribeTicker(symbol: string): void {
+    // Optional override
   }
 
-  subscribeTrades(symbol: string): void {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      try {
-        const msg = { id: Date.now(), type: 'subscribe', channel: 'trades', symbols: [symbol] };
-        this.ws.send(JSON.stringify(msg));
-      } catch (error) {
-        this.notifyError(error as Error, 'api');
-      }
-    }
+  protected processMessage(_data: any) {
+    // Parsing for order book updates should be implemented per exchange
   }
 
-  subscribeTrades(symbol: string): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    try {
-      this.ws.send(
-        JSON.stringify({ id: Date.now(), method: 'trade.subscribe', params: [symbol] })
-      );
-    } catch (error) {
-      this.notifyError(error as Error, 'api');
-    }
-  }
-
-  subscribeTrades(symbol: string): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    const krakenSymbol = this.convertSymbol(symbol);
-    try {
-      const msg = {
-        event: 'subscribe',
-        pair: [krakenSymbol],
-        subscription: { name: 'trade' },
-      };
-      this.ws.send(JSON.stringify(msg));
-    } catch (error) {
-      this.notifyError(error as Error, 'api');
-    }
+  protected convertSymbol(symbol: string): string {
+    return symbol
+      .replace('BTC', 'XBT')
+      .replace('USDT', 'USD')
+      .replace(/([A-Z]+)([A-Z]+)/, '$1/$2');
   }
 
   unsubscribe(symbol: string): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       // Exchange specific unsubscription should be implemented here
     }
-  }
-
-  protected processMessage(_data: any) {
-    // Parsing for order book updates should be implemented per exchange
   }
 }
 
@@ -492,7 +451,7 @@ class BinanceExchange extends BaseExchange {
   }
 
   async connect(): Promise<void> {
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    if (this.ws) {
       return;
     }
 
@@ -500,13 +459,11 @@ class BinanceExchange extends BaseExchange {
     if (now - this.lastConnectionAttempt < this.minConnectionInterval) {
       return;
     }
-
     this.lastConnectionAttempt = now;
-    this.status = 'connecting';
 
+    this.status = 'connecting';
     try {
       this.ws = new WebSocket('wss://stream.binance.com:9443/ws');
-      
       this.ws.onopen = () => {
         console.log(`[${this.constructor.name}] WebSocket connected`);
         this.notifyConnect();
@@ -516,7 +473,7 @@ class BinanceExchange extends BaseExchange {
         // Start ping interval
         this.pingInterval = setInterval(() => {
           if (this.ws?.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({ op: 'ping' }));
+            this.ws.send('ping');
           }
         }, 30000);
       };
@@ -810,8 +767,13 @@ class BybitExchange extends BaseExchange {
 
   subscribeTrades(symbol: string): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const normalizedSymbol = symbol.replace('USDT', 'USD');
     try {
-      this.ws.send(JSON.stringify({ op: 'subscribe', args: [`publicTrade.${symbol}`] }));
+      const msg = {
+        method: 'subscribeTrades',
+        params: { symbol: normalizedSymbol },
+      };
+      this.ws.send(JSON.stringify(msg));
     } catch (error) {
       this.notifyError(error as Error, 'api');
     }
@@ -1051,18 +1013,13 @@ class CoinbaseExchange extends BaseExchange {
   }
 
   subscribeTrades(symbol: string): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    const normalizedSymbol = symbol.replace('USDT', 'USD');
-    try {
-      this.ws.send(
-        JSON.stringify({
-          type: 'subscribe',
-          channel: 'matches',
-          product_ids: [normalizedSymbol],
-        })
-      );
-    } catch (error) {
-      this.notifyError(error as Error, 'api');
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      try {
+        const msg = { id: Date.now(), type: 'subscribe', channel: 'trades', symbols: [symbol] };
+        this.ws.send(JSON.stringify(msg));
+      } catch (error) {
+        this.notifyError(error as Error, 'api');
+      }
     }
   }
 
@@ -1214,6 +1171,110 @@ class CoinbaseExchange extends BaseExchange {
       };
 
       this.notifyOrderBookUpdate(orderBook);
+    }
+  }
+}
+
+class BitfinexExchange extends BaseExchange {
+  private ws: WebSocket | null = null;
+  private chanId: number | null = null;
+  private readonly baseUrl = 'wss://api-pub.bitfinex.com/ws/2';
+
+  async connect(): Promise<void> {
+    if (this.ws) return;
+    this.status = 'connecting';
+    this.ws = new WebSocket(this.baseUrl);
+
+    this.ws.onopen = () => {
+      this.notifyConnect();
+      if (this.symbol) {
+        this.subscribe(this.symbol);
+      }
+    };
+
+    this.ws.onclose = () => {
+      this.notifyDisconnect();
+      this.ws = null;
+      this.reconnect();
+    };
+
+    this.ws.onerror = () => {
+      this.notifyError(new Error('WebSocket error'), 'connection');
+    };
+
+    this.ws.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        this.processMessage(data);
+      } catch (err) {
+        this.notifyError(err as Error, 'parsing');
+      }
+    };
+  }
+
+  disconnect(): void {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.status = 'disconnected';
+  }
+
+  subscribe(symbol: string): void {
+    this.symbol = symbol;
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      const msg = {
+        event: 'subscribe',
+        channel: 'book',
+        symbol: `t${symbol}`,
+        prec: 'P0',
+        freq: 'F0',
+        len: 25
+      };
+      this.ws.send(JSON.stringify(msg));
+    }
+  }
+
+  unsubscribe(_symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN && this.chanId) {
+      const msg = { event: 'unsubscribe', chanId: this.chanId };
+      this.ws.send(JSON.stringify(msg));
+      this.chanId = null;
+    }
+  }
+
+  protected processMessage(data: any) {
+    if (data.event === 'subscribed') {
+      this.chanId = data.chanId;
+      return;
+    }
+    if (!Array.isArray(data)) return;
+    if (data[1] === 'hb') return; // heartbeat
+
+    const entries = Array.isArray(data[1][0]) ? data[1] : [data[1]];
+    const bids: OrderBookEntry[] = [];
+    const asks: OrderBookEntry[] = [];
+    entries.forEach(([price, count, amount]: [number, number, number]) => {
+      if (amount > 0) {
+        bids.push({
+          price,
+          quantity: amount,
+          exchanges: ['BITFINEX'],
+          exchangeQuantities: { BITFINEX: amount }
+        });
+      } else {
+        asks.push({
+          price,
+          quantity: Math.abs(amount),
+          exchanges: ['BITFINEX'],
+          exchangeQuantities: { BITFINEX: Math.abs(amount) }
+        });
+      }
+    });
+
+    if (bids.length || asks.length) {
+      const ob: OrderBookData = { bids, asks, timestamp: Date.now() };
+      this.notifyOrderBookUpdate(ob);
     }
   }
 }
@@ -1494,6 +1555,21 @@ class KrakenExchange extends BaseExchange {
       this.notifyOrderBookUpdate(orderBook);
     }
   }
+
+  subscribeTrades(symbol: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const krakenSymbol = this.convertSymbol(symbol);
+    try {
+      const msg = {
+        event: 'subscribe',
+        pair: [krakenSymbol],
+        subscription: { name: 'trade' },
+      };
+      this.ws.send(JSON.stringify(msg));
+    } catch (error) {
+      this.notifyError(error as Error, 'api');
+    }
+  }
 }
 
 class PhemexExchange extends BaseExchange {
@@ -1514,6 +1590,20 @@ class PhemexExchange extends BaseExchange {
   constructor(config: any = {}) {
     super();
     this.config = config;
+  }
+
+  subscribeTrades(symbol: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    try {
+      const msg = {
+        method: 'trade.subscribe',
+        params: [symbol],
+        id: Date.now()
+      };
+      this.ws.send(JSON.stringify(msg));
+    } catch (error) {
+      this.notifyError(error as Error, 'api');
+    }
   }
 
   async connect(): Promise<void> {
@@ -2155,11 +2245,23 @@ class AggrExchange extends BasicWsExchange {
   constructor() {
     super('wss://sentiment.aggr.trade');
   }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
+  }
 }
 
 class BinanceFuturesExchange extends BasicWsExchange {
   constructor() {
     super('wss://fstream.binance.com/ws');
+  }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
   }
 }
 
@@ -2167,13 +2269,23 @@ class BinanceUsExchange extends BasicWsExchange {
   constructor() {
     super('wss://stream.binance.us:9443/ws');
   }
-}
 
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
+  }
 }
 
 class BitgetExchangeStub extends BasicWsExchange {
   constructor() {
     super('wss://ws.bitget.com/spot/v1/stream');
+  }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
   }
 }
 
@@ -2181,11 +2293,23 @@ class BitmartExchangeStub extends BasicWsExchange {
   constructor() {
     super('wss://openapi-ws-v2.bitmart.com/api?protocol=1.1');
   }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
+  }
 }
 
 class BitmexExchangeStub extends BasicWsExchange {
   constructor() {
     super('wss://www.bitmex.com/realtime');
+  }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
   }
 }
 
@@ -2193,17 +2317,35 @@ class BitstampExchangeStub extends BasicWsExchange {
   constructor() {
     super('wss://ws.bitstamp.net/');
   }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
+  }
 }
 
 class BitunixExchangeStub extends BasicWsExchange {
   constructor() {
     super('wss://fapi.bitunix.com/public/');
   }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
+  }
 }
 
 class CryptocomExchangeStub extends BasicWsExchange {
   constructor() {
     super('wss://stream.crypto.com/v2/market');
+  }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
   }
 }
 
@@ -2479,11 +2621,23 @@ class DydxExchangeStub extends BasicWsExchange {
   constructor() {
     super('wss://api.dydx.exchange/v3/ws');
   }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
+  }
 }
 
 class GateioExchangeStub extends BasicWsExchange {
   constructor() {
     super('wss://ws.gate.io/v3/');
+  }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
   }
 }
 
@@ -2751,17 +2905,35 @@ class KucoinExchangeStub extends BasicWsExchange {
   constructor() {
     super('wss://ws-api.kucoin.com/endpoint');
   }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
+  }
 }
 
 class MexcExchangeStub extends BasicWsExchange {
   constructor() {
     super('wss://wbs.mexc.com/ws');
   }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
+  }
 }
 
 class OkexExchangeStub extends BasicWsExchange {
   constructor() {
     super('wss://ws.okx.com:8443/ws/v5/public');
+  }
+
+  unsubscribe(symbol: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      // Implement unsubscribe logic if needed
+    }
   }
 }
 
